@@ -1,0 +1,6 @@
+{
+  "name": "Vaughan Code University",
+  "description": "A structured research academy and intelligence platform for decoding language, identity blueprints, behavioral patterns, and cyclical timelines through the Vaughan Code.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
