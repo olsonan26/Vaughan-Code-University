@@ -1,71 +1,72 @@
 import React from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Video, 
-  Users, 
-  CheckCircle2, 
-  Plus, 
-  ExternalLink, 
-  Sparkles,
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Video,
+  Users,
+  CheckCircle2,
   Lock,
-  Share2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { CommunityEvent } from '../../types';
+import { CommunityEvent, SubscriptionTier } from '../../types';
+
+const TIER_RANK: Record<SubscriptionTier, number> = {
+  free: 0,
+  pro: 1,
+  vip: 2,
+};
 
 export const CalendarView: React.FC = () => {
   const { events, currentUser, toggleEventRSVP, openSubscriptionModal, showToast } = useApp();
 
   const handleExportCalendar = (event: CommunityEvent) => {
     showToast({
-      title: 'Calendar Event (.ICS) Created! 📅',
-      message: `Event for "${event.title}" prepared for Google Calendar / Apple iCal.`,
+      title: 'Calendar Event Prepared',
+      message: `“${event.title}” is ready to add to your calendar.`,
       type: 'info',
     });
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="w-6 h-6 text-amber-500" />
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Community Events & Live Calls</h1>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Join weekly live coaching workshops, teardowns, research seminars, and interactive masterminds with Headmaster Prof. Vaughan, Instructor Alexander Kotzev, and guest fellows.
-          </p>
+      <div>
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="w-6 h-6 text-amber-500" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Live Classes, Chart Labs & Study Rooms</h1>
         </div>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Join Vaughan Code classes, practical chart-building workshops, timeline labs, Q&A sessions, and moderator-led study rooms.
+        </p>
       </div>
 
-      {/* Events List */}
       <div className="space-y-5">
         {events.map((event) => {
           const isRsvpd = currentUser ? event.rsvpUserIds.includes(currentUser.id) : false;
-          const isVipOnly = event.requiredTier === 'vip' && currentUser?.subscriptionTier !== 'vip';
+          const userTier = currentUser?.subscriptionTier || 'free';
+          const isLocked = TIER_RANK[userTier] < TIER_RANK[event.requiredTier];
+          const date = new Date(`${event.date}T12:00:00`);
+
+          const accessLabel =
+            event.requiredTier === 'vip'
+              ? 'VIP ACCESS'
+              : event.requiredTier === 'pro'
+                ? 'PRO ACCESS'
+                : 'ALL MEMBERS';
 
           return (
             <div
               key={event.id}
               className={`bg-white border rounded-2xl p-6 shadow-sm transition-all ${
-                isVipOnly ? 'border-slate-200 opacity-80' : 'border-slate-200 hover:border-slate-300'
+                isLocked ? 'border-slate-200 opacity-85' : 'border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                
-                {/* Left Date / Badge & Info */}
                 <div className="flex items-start gap-4">
-                  {/* Date Badge */}
                   <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center text-center shrink-0 shadow-sm">
                     <span className="text-[10px] font-bold text-amber-700 uppercase">
-                      {new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}
+                      {date.toLocaleDateString('en-US', { month: 'short' })}
                     </span>
-                    <span className="text-xl font-black text-slate-900">
-                      {new Date(event.date).getDate()}
-                    </span>
+                    <span className="text-xl font-black text-slate-900">{date.getDate()}</span>
                   </div>
 
                   <div className="space-y-1.5">
@@ -75,26 +76,23 @@ export const CalendarView: React.FC = () => {
                         {event.startTime} – {event.endTime} {event.timeZone}
                       </span>
 
-                      {event.requiredTier === 'vip' ? (
-                        <span className="text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-full">
-                          VIP MASTERMIND EXCLUSIVE
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
-                          ALL SCHOLARS WELCOME
-                        </span>
-                      )}
+                      <span
+                        className={`text-[10px] font-bold border px-2 py-0.5 rounded-full ${
+                          event.requiredTier === 'vip'
+                            ? 'bg-purple-100 text-purple-800 border-purple-200'
+                            : event.requiredTier === 'pro'
+                              ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                              : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        }`}
+                      >
+                        {accessLabel}
+                      </span>
                     </div>
 
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                      {event.title}
-                    </h3>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">{event.title}</h3>
+                    <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">{event.description}</p>
 
-                    <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
-                      {event.description}
-                    </p>
-
-                    <div className="flex items-center gap-4 pt-1 text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-slate-500">
                       <div className="flex items-center gap-2">
                         <img
                           src={event.speaker.avatar}
@@ -113,23 +111,22 @@ export const CalendarView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Right Action Controls */}
                 <div className="flex items-center gap-3 shrink-0 self-end lg:self-center">
                   <button
                     onClick={() => handleExportCalendar(event)}
                     className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors cursor-pointer"
-                    title="Add to Google Calendar / iCal"
+                    title="Add to calendar"
                   >
                     <CalendarIcon className="w-4 h-4" />
                   </button>
 
-                  {isVipOnly ? (
+                  {isLocked ? (
                     <button
                       onClick={openSubscriptionModal}
                       className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
                     >
                       <Lock className="w-3.5 h-3.5" />
-                      <span>Upgrade to VIP</span>
+                      <span>{event.requiredTier === 'vip' ? 'Upgrade to VIP' : 'Upgrade to Pro'}</span>
                     </button>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -152,18 +149,16 @@ export const CalendarView: React.FC = () => {
                         className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
                       >
                         <Video className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Join Stage</span>
+                        <span>Join Session</span>
                       </a>
                     </div>
                   )}
                 </div>
-
               </div>
             </div>
           );
         })}
       </div>
-
     </div>
   );
 };
