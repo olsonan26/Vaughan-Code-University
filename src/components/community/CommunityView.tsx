@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Flame, 
-  Trophy, 
-  Sparkles, 
-  Calendar as CalendarIcon, 
-  Crown, 
-  Compass, 
-  CheckCircle2, 
-  ArrowUpRight, 
-  Pin, 
-  Zap,
+import {
+  Plus,
+  Search,
+  Flame,
+  Trophy,
+  Calendar as CalendarIcon,
+  Compass,
   TrendingUp,
-  Clock
+  Clock,
+  Shield,
+  Crown,
+  ArrowUpRight,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PostCard } from './PostCard';
 import { CreatePostModal } from './CreatePostModal';
-import { PostCategory } from '../../types';
+import { PostCategory, User } from '../../types';
 import { LEVEL_TIERS } from '../../data/initialData';
 
 const CATEGORIES: ('All' | PostCategory)[] = [
@@ -31,17 +28,23 @@ const CATEGORIES: ('All' | PostCategory)[] = [
   'Resource Share',
 ];
 
+const teamRole = (user: User) => {
+  if (user.id === 'user-creator') return 'HEADMASTER';
+  if (user.id === 'user-instructor') return 'INSTRUCTOR / MODERATOR';
+  if (user.role === 'moderator') return 'MODERATOR';
+  return null;
+};
+
 export const CommunityView: React.FC = () => {
-  const { 
-    posts, 
-    currentUser, 
-    users, 
-    events, 
-    awardXP, 
-    setActiveTab, 
-    openSubscriptionModal, 
+  const {
+    posts,
+    currentUser,
+    users,
+    events,
+    awardXP,
+    setActiveTab,
     openUserProfile,
-    openLevelPerksModal 
+    openLevelPerksModal,
   } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState<'All' | PostCategory>('All');
@@ -50,53 +53,50 @@ export const CommunityView: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [hasClaimedDailyStreak, setHasClaimedDailyStreak] = useState(false);
 
-  // Filter posts
   const filteredPosts = posts
     .filter((post) => {
-      const matchesCat = selectedCategory === 'All' || post.category === selectedCategory;
-      const matchesSearch = 
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.authorName.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCat && matchesSearch;
+      const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        post.title.toLowerCase().includes(query) ||
+        post.content.toLowerCase().includes(query) ||
+        post.authorName.toLowerCase().includes(query);
+      return matchesCategory && matchesSearch;
     })
     .sort((a, b) => {
-      // Pinned posts always stay on top
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
-
       if (sortBy === 'trending') {
-        return (b.likes.length + b.comments.length) - (a.likes.length + a.comments.length);
+        return b.likes.length + b.comments.length - (a.likes.length + a.comments.length);
       }
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-  // Top 3 Leaderboard members
-  const topMembers = [...users]
+  const officialTeam = users.filter(
+    (user) => user.id === 'user-creator' || user.id === 'user-instructor' || user.role === 'moderator',
+  );
+
+  const topStudents = users
+    .filter((user) => user.role === 'member')
     .sort((a, b) => b.xp - a.xp)
     .slice(0, 3);
 
-  // Next upcoming live event
   const upcomingEvent = events[0];
+
+  const currentLevelInfo =
+    LEVEL_TIERS.find((tier) => tier.level === (currentUser?.level || 1)) || LEVEL_TIERS[0];
+  const nextLevelInfo = LEVEL_TIERS.find((tier) => tier.level === (currentUser?.level || 1) + 1);
 
   const handleClaimDailyStreak = () => {
     if (hasClaimedDailyStreak) return;
     setHasClaimedDailyStreak(true);
-    awardXP(10, 'Daily Community Check-in Streak 🔥');
+    awardXP(10, 'Daily community study check-in');
   };
-
-  const currentLevelInfo = LEVEL_TIERS.find((t) => t.level === (currentUser?.level || 1)) || LEVEL_TIERS[0];
-  const nextLevelInfo = LEVEL_TIERS.find((t) => t.level === (currentUser?.level || 1) + 1);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* 2-Column Responsive Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left / Center Main Feed (8 columns on lg) */}
         <main className="lg:col-span-8 space-y-6">
-          
-          {/* Post Creation Quick Trigger Bar */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex items-center gap-3">
             <img
               src={currentUser?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
@@ -107,7 +107,7 @@ export const CommunityView: React.FC = () => {
               onClick={() => setIsCreateModalOpen(true)}
               className="flex-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-left text-xs sm:text-sm text-slate-500 hover:text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
             >
-              <span>Write something to the community or share a teaching result...</span>
+              <span>Ask a question, share a chart observation, or post a study result...</span>
               <span className="hidden sm:inline text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md">
                 +5 XP
               </span>
@@ -121,24 +121,22 @@ export const CommunityView: React.FC = () => {
             </button>
           </div>
 
-          {/* Categories Horizontal Filter Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-            {CATEGORIES.map((cat) => (
+            {CATEGORIES.map((category) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={category}
+                onClick={() => setSelectedCategory(category)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  selectedCategory === cat
+                  selectedCategory === category
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                {cat}
+                {category}
               </button>
             ))}
           </div>
 
-          {/* Search & Sort Tool bar */}
           <div className="flex items-center justify-between gap-4 text-xs text-slate-500">
             <div className="relative flex-1 max-w-xs">
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
@@ -146,7 +144,7 @@ export const CommunityView: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search discussions & teachings..."
+                placeholder="Search discussions..."
                 className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -177,7 +175,6 @@ export const CommunityView: React.FC = () => {
             </div>
           </div>
 
-          {/* Posts Feed */}
           <div className="space-y-4">
             {filteredPosts.map((post) => (
               <PostCard key={post.id} post={post} />
@@ -187,16 +184,13 @@ export const CommunityView: React.FC = () => {
               <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-500 shadow-xs">
                 <Compass className="w-10 h-10 mx-auto text-slate-300 mb-3" />
                 <p className="text-base font-bold text-slate-900">No discussions found</p>
-                <p className="text-xs text-slate-500 mt-1">Try resetting your filters or be the first to start a conversation!</p>
+                <p className="text-xs text-slate-500 mt-1">Try another search or start a new study discussion.</p>
               </div>
             )}
           </div>
         </main>
 
-        {/* Right Sidebar (4 columns on lg) */}
         <aside className="lg:col-span-4 space-y-6">
-          
-          {/* Community Info & Creator Card */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-sm font-bold text-white shadow-xs tracking-wider border border-slate-700">
@@ -204,64 +198,66 @@ export const CommunityView: React.FC = () => {
               </div>
               <div>
                 <h2 className="font-bold text-base text-slate-900">Vaughan Code University</h2>
-                <p className="text-xs text-slate-500">{users.length} Active Scholars</p>
+                <p className="text-xs text-slate-500">Language → Identity → Timeline</p>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              The premier research academy for decoding language, identity blueprints, behavioral patterns, and cyclical timelines through the Vaughan Code.
+              Learn the code, understand what each chart position governs, build complete profiles and timelines, then test what you see against known events.
             </p>
 
             <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div 
-                onClick={() => openUserProfile('user-creator', 'page')}
-                className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-50 p-1.5 -mx-1.5 rounded-xl transition-colors"
-              >
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80"
-                    alt="Prof. Vaughan"
-                    className="w-8 h-8 rounded-full object-cover border border-amber-400 shadow-xs"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-900 block leading-tight">Prof. Vaughan</span>
-                    <span className="text-[10px] text-slate-500">Main Creator / Headmaster</span>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Official Team</p>
+              {officialTeam.map((member) => {
+                const role = teamRole(member);
+                return (
+                  <div
+                    key={member.id}
+                    onClick={() => openUserProfile(member.id, 'page')}
+                    className="flex items-center justify-between gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1.5 -mx-1.5 rounded-xl transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative shrink-0">
+                        <img
+                          src={member.avatar}
+                          alt={member.name}
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs"
+                        />
+                        {member.id === 'user-creator' && (
+                          <Crown className="absolute -right-1 -bottom-1 w-3 h-3 text-amber-500 fill-amber-500" />
+                        )}
+                        {member.role === 'moderator' && (
+                          <Shield className="absolute -right-1 -bottom-1 w-3 h-3 text-cyan-600 fill-white" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-900 block leading-tight truncate">{member.name}</span>
+                        <span className="text-[10px] text-slate-500 truncate block">{member.title}</span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] font-bold border px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${
+                        member.id === 'user-creator'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : member.id === 'user-instructor'
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            : 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                      }`}
+                    >
+                      {role}
+                    </span>
                   </div>
-                </div>
-                <span className="text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                  HEADMASTER
-                </span>
-              </div>
-
-              <div 
-                onClick={() => openUserProfile('user-instructor', 'page')}
-                className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-50 p-1.5 -mx-1.5 rounded-xl transition-colors"
-              >
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-                    alt="Alexander Kotzev"
-                    className="w-8 h-8 rounded-full object-cover border border-indigo-300 shadow-xs"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-900 block leading-tight">Alexander Kotzev</span>
-                    <span className="text-[10px] text-slate-500">Instructor</span>
-                  </div>
-                </div>
-                <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                  INSTRUCTOR
-                </span>
-              </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Gamification & Daily Streak Card */}
           {currentUser && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Flame className="w-5 h-5 text-amber-500 fill-amber-500" />
-                  <span className="font-bold text-sm text-slate-900">{currentUser.streakDays} Day Streak!</span>
+                  <span className="font-bold text-sm text-slate-900">{currentUser.streakDays} Day Streak</span>
                 </div>
                 <button
                   onClick={handleClaimDailyStreak}
@@ -272,11 +268,10 @@ export const CommunityView: React.FC = () => {
                       : 'bg-amber-500 hover:bg-amber-600 text-white'
                   }`}
                 >
-                  {hasClaimedDailyStreak ? '✓ Claimed Today' : '🔥 Check-In (+10 XP)'}
+                  {hasClaimedDailyStreak ? '✓ Checked In' : 'Check In +10 XP'}
                 </button>
               </div>
 
-              {/* Level Progress */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-indigo-700">
@@ -284,43 +279,60 @@ export const CommunityView: React.FC = () => {
                   </span>
                   <span className="text-slate-500">{currentUser.xp} XP</span>
                 </div>
-                
                 <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-indigo-600 rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${Math.min(100, Math.max(0, Math.round(((currentUser.xp - currentLevelInfo.minXp) / ((nextLevelInfo ? nextLevelInfo.minXp : currentLevelInfo.maxXp) - currentLevelInfo.minXp)) * 100)))}%` 
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(
+                          0,
+                          Math.round(
+                            ((currentUser.xp - currentLevelInfo.minXp) /
+                              ((nextLevelInfo ? nextLevelInfo.minXp : currentLevelInfo.maxXp) - currentLevelInfo.minXp)) *
+                              100,
+                          ),
+                        ),
+                      )}%`,
                     }}
                   />
                 </div>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>{currentLevelInfo.minXp} XP</span>
-                  <span>{nextLevelInfo ? `${nextLevelInfo.minXp - currentUser.xp} XP to Level ${nextLevelInfo.level}` : 'Max Level'}</span>
-                </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <button
-                  onClick={openLevelPerksModal}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>View All Level Perks</span>
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-xs font-bold text-amber-600">
-                  {currentUser.badges.length} Badges Earned 🏆
-                </span>
-              </div>
+              <button
+                onClick={openLevelPerksModal}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+              >
+                <span>View Level Roadmap</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
-          {/* Top Leaderboard Podium Snippet */}
+          {upcomingEvent && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-amber-500" />
+                  <h3 className="font-bold text-sm text-slate-900">Next Live Session</h3>
+                </div>
+                <button
+                  onClick={() => setActiveTab('calendar')}
+                  className="text-xs text-indigo-600 hover:underline cursor-pointer font-medium"
+                >
+                  Calendar →
+                </button>
+              </div>
+              <p className="text-xs font-bold text-slate-900 leading-snug">{upcomingEvent.title}</p>
+              <p className="text-[11px] text-slate-500 leading-relaxed">{upcomingEvent.description}</p>
+            </div>
+          )}
+
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-500" />
-                <h3 className="font-bold text-sm text-slate-900">Top Scholars</h3>
+                <h3 className="font-bold text-sm text-slate-900">Top Students</h3>
               </div>
               <button
                 onClick={() => setActiveTab('leaderboards')}
@@ -331,85 +343,29 @@ export const CommunityView: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              {topMembers.map((member, index) => (
+              {topStudents.map((member, index) => (
                 <div
                   key={member.id}
                   onClick={() => openUserProfile(member.id, 'page')}
-                  className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 cursor-pointer transition-colors"
+                  className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className={`w-5 text-center text-xs font-bold ${
-                      index === 0 ? 'text-amber-500' : index === 1 ? 'text-slate-500' : 'text-amber-700'
-                    }`}>
-                      #{index + 1}
-                    </span>
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="w-7 h-7 rounded-full object-cover"
-                    />
-                    <div>
-                      <p className="text-xs font-semibold text-slate-900 truncate max-w-[110px]">{member.name}</p>
-                      <p className="text-[10px] text-slate-400">Level {member.level}</p>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 text-[11px] font-black text-slate-400">#{index + 1}</span>
+                    <img src={member.avatar} alt={member.name} className="w-7 h-7 rounded-lg object-cover border border-slate-200" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-900 truncate">{member.name}</p>
+                      <p className="text-[10px] text-slate-500">Level {member.level}</p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-indigo-600">{member.xp} XP</span>
+                  <span className="text-xs font-bold text-indigo-600">{member.xp.toLocaleString()} XP</span>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Next Live Call Event Preview */}
-          {upcomingEvent && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
-              <div className="flex items-center gap-2 text-amber-600 text-xs font-bold">
-                <CalendarIcon className="w-4 h-4" />
-                <span>UPCOMING LIVE WORKSHOP</span>
-              </div>
-
-              <h4 className="font-bold text-sm text-slate-900 leading-snug">
-                {upcomingEvent.title}
-              </h4>
-
-              <div className="text-xs text-slate-500 flex items-center gap-2">
-                <span>📅 {upcomingEvent.date}</span>
-                <span>• {upcomingEvent.startTime} {upcomingEvent.timeZone}</span>
-              </div>
-
-              <button
-                onClick={() => setActiveTab('calendar')}
-                className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-              >
-                RSVP & View Stage →
-              </button>
-            </div>
-          )}
-
-          {/* Subscription Upgrade Promo if Free tier */}
-          {currentUser?.subscriptionTier === 'free' && (
-            <div className="bg-gradient-to-br from-amber-50/70 via-white to-white border border-amber-200 rounded-2xl p-5 text-center space-y-3 shadow-xs">
-              <Zap className="w-8 h-8 text-amber-500 mx-auto fill-amber-500" />
-              <h4 className="font-bold text-sm text-slate-900">Unlock All Masterclasses</h4>
-              <p className="text-xs text-slate-600">
-                Get full access to all 4+ courses, audio podcasts, downloadable PDF blueprints, and certification tests.
-              </p>
-              <button
-                onClick={openSubscriptionModal}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
-              >
-                Upgrade to Pro ($29/mo)
-              </button>
-            </div>
-          )}
-
         </aside>
       </div>
 
-      {/* Modal for creating a new post */}
-      <CreatePostModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
+      <CreatePostModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
     </div>
   );
 };
