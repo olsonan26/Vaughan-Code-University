@@ -56,7 +56,7 @@ const MainLayout: React.FC = () => {
       <main className="flex-1 pb-16">
         {activeTab === 'community' && <CommunityView />}
         {activeTab === 'classroom' && <ClassroomView />}
-        {(activeTab === 'leaderboard' || activeTab === 'leaderboards') && <LeaderboardView />}
+        {activeTab === 'leaderboards' && <LeaderboardView />}
         {activeTab === 'calendar' && <CalendarView />}
         {activeTab === 'members' && <MembersView />}
         {activeTab === 'profile' && <ProfileView />}
