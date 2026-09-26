@@ -21,8 +21,6 @@ import {
 import { useApp } from '../../context/AppContext';
 import { Course, Lesson } from '../../types';
 import { LessonPlayer } from './LessonPlayer';
-import { CourseEditorModal } from './CourseEditorModal';
-import { CertificateModal } from './CertificateModal';
 
 export const ClassroomView: React.FC = () => {
   const { 
@@ -268,13 +266,6 @@ export const ClassroomView: React.FC = () => {
 
         </div>
 
-        {/* Certificate Modal */}
-        <CertificateModal
-          isOpen={isCertificateModalOpen}
-          onClose={closeCertificateModal}
-          course={certificateCourse || activeCourse}
-          user={currentUser}
-        />
       </div>
     );
   }
@@ -417,12 +408,6 @@ export const ClassroomView: React.FC = () => {
         })}
       </div>
 
-      {/* Course Editor Modal */}
-      <CourseEditorModal
-        isOpen={isCourseEditorOpen}
-        onClose={closeCourseEditor}
-        initialCourse={editingCourse}
-      />
     </div>
   );
 };

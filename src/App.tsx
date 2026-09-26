@@ -23,6 +23,8 @@ import { CertificateModal } from './components/classroom/CertificateModal';
 import { CourseEditorModal } from './components/classroom/CourseEditorModal';
 import { WelcomeModal } from './components/common/WelcomeModal';
 import { ToastContainer } from './components/common/ToastContainer';
+import { AccessRestricted } from './components/common/AccessRestricted';
+import { canAccessInstructorStudio } from './lib/permissions';
 import { Crown, ShieldCheck, Zap } from 'lucide-react';
 
 // Reset the old seeded demo cache once so the corrected Vaughan Code curriculum,
@@ -44,6 +46,12 @@ const MainLayout: React.FC = () => {
     openSubscriptionModal,
     currentUser,
     subscriptionPlans,
+    isCourseEditorOpen,
+    closeCourseEditor,
+    editingCourse,
+    isCertificateModalOpen,
+    closeCertificateModal,
+    certificateCourse,
   } = useApp();
 
   const proPlan = subscriptionPlans.find((plan) => plan.id === 'pro');
@@ -61,7 +69,8 @@ const MainLayout: React.FC = () => {
         {activeTab === 'members' && <MembersView />}
         {activeTab === 'profile' && <ProfileView />}
         {activeTab === 'admin' && <AdminControlView />}
-        {activeTab === 'creator' && <CreatorDashboardView />}
+        {activeTab === 'creator' &&
+          (canAccessInstructorStudio(currentUser) ? <CreatorDashboardView /> : <AccessRestricted area="Instructor Studio" />)}
       </main>
 
       {currentUser?.subscriptionTier === 'free' && (
@@ -126,8 +135,23 @@ const MainLayout: React.FC = () => {
       <UserProfileModal />
       <LevelUpModal />
       <LevelPerksModal />
-      <CertificateModal />
-      <CourseEditorModal />
+      {/* Mounted once, app-wide, so they open from any tab (Studio, Profile, Classroom). */}
+      <CertificateModal
+        isOpen={isCertificateModalOpen}
+        onClose={closeCertificateModal}
+        course={certificateCourse}
+        user={currentUser}
+      />
+      {isCourseEditorOpen && (
+        // Keyed + conditionally mounted so the form always initialises from the course being
+        // edited. Previously it kept stale/blank state and could overwrite a course's modules.
+        <CourseEditorModal
+          key={editingCourse?.id ?? 'new-course'}
+          isOpen={isCourseEditorOpen}
+          onClose={closeCourseEditor}
+          initialCourse={editingCourse}
+        />
+      )}
       <WelcomeModal />
       <ToastContainer />
     </div>
