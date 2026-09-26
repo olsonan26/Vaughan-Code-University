@@ -14,6 +14,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Post, UserRole } from '../../types';
+import { canModerateCommunity } from '../../lib/permissions';
 import { useApp } from '../../context/AppContext';
 import { LEVEL_TIERS } from '../../data/initialData';
 
@@ -46,7 +47,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const isLiked = currentUser ? post.likes.includes(currentUser.id) : false;
   const authorLevelInfo = LEVEL_TIERS.find((t) => t.level === post.authorLevel) || LEVEL_TIERS[0];
-  const canModerate = currentUser?.role === 'moderator' || currentUser?.role === 'creator';
+  const canModerate = canModerateCommunity(currentUser);
   const canPin = currentUser?.role === 'creator';
 
   const handleAddComment = (e: React.FormEvent) => {

@@ -18,6 +18,7 @@ import {
   Award,
   CheckCircle2,
 } from 'lucide-react';
+import { canAccessAdmin } from '../../lib/permissions';
 import { useApp } from '../../context/AppContext';
 import { SubscriptionTier, UserRole, User } from '../../types';
 
@@ -55,7 +56,7 @@ export const AdminControlView: React.FC = () => {
   const [customXpAmount, setCustomXpAmount] = useState(100);
   const [xpReason, setXpReason] = useState('Faculty recognition');
 
-  const isAuthorized = currentUser?.id === 'user-creator' || currentUser?.id === 'user-instructor';
+  const isAuthorized = canAccessAdmin(currentUser);
 
   const filteredUsers = users.filter((user) => {
     const query = searchQuery.toLowerCase();
