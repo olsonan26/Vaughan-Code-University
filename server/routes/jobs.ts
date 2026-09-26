@@ -19,32 +19,37 @@ import type { JobState } from '../../shared/jobs/types.js';
 
 export const jobsRoutes = new Hono<AppEnv>();
 
+/**
+ * Starts processing right after an enqueue so users don't wait for the scheduler.
+ * - Cloudflare/edge style runtimes: executionCtx.waitUntil
+ * - Vercel Node functions: @vercel/functions waitUntil (keeps the function alive after responding)
+ * - Plain Node (local dev, other hosts): run in the background of the long-lived process
+ * Set JOBS_KICK=off to disable (tests drive the worker explicitly).
+ */
 export function kickWorker(c: Context<AppEnv>) {
-  const runner = () => runOnce({ workerId: 'kick-worker', maxSteps: 2, timeBudgetMs: 10000 });
-
-  if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-    c.executionCtx.waitUntil(runner());
-    return;
-  }
-
-  const appUrl = serverEnv.appUrl;
-  if (appUrl) {
-    const workerEndpoint = `${appUrl.replace(/\/$/, '')}/api/jobs/worker`;
-    const secret = serverEnv.workerSecret || serverEnv.cronSecret;
-    fetch(workerEndpoint, {
-      method: 'POST',
-      headers: {
-        'x-worker-secret': secret,
-        'Content-Type': 'application/json',
-      },
-    }).catch((err) => {
-      console.error('kickWorker fire-and-forget fetch error:', err);
-    });
-  } else {
-    runner().catch((err) => {
+  if (process.env.JOBS_KICK === 'off') return;
+  const runner = () =>
+    runOnce({ workerId: 'kick-worker', maxSteps: 3, timeBudgetMs: 60000 }).catch((err) => {
       console.error('kickWorker runner error:', err);
     });
+
+  let ctx: { waitUntil?: (p: Promise<unknown>) => void } | undefined;
+  try {
+    ctx = c.executionCtx as any;
+  } catch {
+    ctx = undefined; // Hono throws when there is no ExecutionContext (Node)
   }
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(runner());
+    return;
+  }
+  if (process.env.VERCEL) {
+    void import('@vercel/functions')
+      .then(({ waitUntil }) => waitUntil(runner()))
+      .catch((err) => console.error('kickWorker waitUntil unavailable:', err));
+    return;
+  }
+  void runner();
 }
 
 // GET / - List jobs

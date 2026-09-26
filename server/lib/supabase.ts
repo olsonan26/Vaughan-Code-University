@@ -1,4 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
+
+/** Node < 22 has no global WebSocket; supabase-js needs one to construct a client (realtime is unused). */
+const realtime = { transport: (globalThis as any).WebSocket ?? (WebSocket as any) };
 import { serverEnv, isSupabaseServerConfigured } from '../env.js';
 import { HttpError } from './errors.js';
 
@@ -28,6 +32,7 @@ export function getServiceClient(): SupabaseClient {
       serverEnv.supabaseUrl,
       serverEnv.supabaseServiceRoleKey,
       {
+        realtime,
         auth: {
           persistSession: false,
           autoRefreshToken: false,
@@ -57,6 +62,7 @@ export function createUserClient(accessToken: string): SupabaseClient {
         Authorization: `Bearer ${accessToken}`,
       },
     },
+    realtime,
     auth: {
       persistSession: false,
       autoRefreshToken: false,

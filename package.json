@@ -13,28 +13,34 @@
     "dev:all": "concurrently -n web,api \"bun run dev\" \"bun run dev:api\"",
     "test": "vitest run",
     "build:api-check": "esbuild 'api/[[...route]].ts' --bundle --platform=node --format=esm --packages=external --outfile=/tmp/vcu-api-check.mjs",
-    "db:test": "bash scripts/db/test.sh"
+    "db:test": "bash scripts/db/test.sh",
+    "test:it": "bash scripts/it/start-stack.sh && tsx scripts/it/knowledge.it.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
     "@supabase/supabase-js": "^2.117.2",
     "@tailwindcss/vite": "^4.1.14",
     "@types/canvas-confetti": "^1.9.0",
+    "@vercel/functions": "^3.9.9",
     "@vitejs/plugin-react": "^5.0.4",
     "canvas-confetti": "^1.9.4",
     "hono": "^4.13.9",
     "lucide-react": "^0.546.0",
+    "mammoth": "^1.12.3",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-router": "^7",
+    "unpdf": "^1.8.1",
     "vite": "^6.2.3",
+    "ws": "^8.21.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.21",
     "concurrently": "^10.0.5",
     "esbuild": "^0.25.0",
@@ -43,5 +49,8 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
     "vitest": "^5.0.2"
+  },
+  "engines": {
+    "node": ">=20.12"
   }
 }
