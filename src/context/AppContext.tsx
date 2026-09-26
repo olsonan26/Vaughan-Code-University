@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import { AppTab, canonicalPath, parseRoute, routes } from '../lib/routes';
 import confetti from 'canvas-confetti';
 import { 
   User, 
@@ -45,7 +47,7 @@ interface AppContextType {
   directMessages: DirectMessage[];
   toasts: Toast[];
   levelUpModal: { isOpen: boolean; newLevel: LevelInfo | null };
-  activeTab: 'community' | 'classroom' | 'calendar' | 'members' | 'leaderboards' | 'creator' | 'profile' | 'admin';
+  activeTab: AppTab;
   selectedCourseId: string | null;
   selectedLessonId: string | null;
   isAuthModalOpen: boolean;
@@ -62,7 +64,7 @@ interface AppContextType {
   systemAnnouncement: SystemAnnouncement | null;
 
   // Navigation & UI controls
-  setActiveTab: (tab: 'community' | 'classroom' | 'calendar' | 'members' | 'leaderboards' | 'creator' | 'profile' | 'admin') => void;
+  setActiveTab: (tab: AppTab) => void;
   setSelectedCourseId: (id: string | null) => void;
   setSelectedLessonId: (id: string | null) => void;
   openAuthModal: () => void;
@@ -77,6 +79,7 @@ interface AppContextType {
   closeCertificateModal: () => void;
   openLevelPerksModal: () => void;
   closeLevelPerksModal: () => void;
+  closeLevelUpModal: () => void;
   dismissToast: (id: string) => void;
   showToast: (toast: Omit<Toast, 'id'>) => void;
   dismissAnnouncement: () => void;
@@ -158,7 +161,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const parsed = JSON.parse(saved);
         if (!parsed.some((c: Course) => c.author?.name === 'Prof. Vaughan')) return INITIAL_COURSES;
         // Ensure the first training video matches the latest YouTube URL
-        const updated = parsed.map((c: Course) => {
+        const updated = parsed.map((cached: Course) => {
+          // Course images moved from /src/assets (dev-server only) to /public; repair cached paths.
+          const c: Course = cached.thumbnail?.startsWith('/src/assets/images/')
+            ? { ...cached, thumbnail: cached.thumbnail.replace('/src/assets/images/', '/images/courses/') }
+            : cached;
           if (c.id === 'course-1') {
             return {
               ...c,
@@ -207,9 +214,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'community' | 'classroom' | 'calendar' | 'members' | 'leaderboards' | 'creator' | 'profile' | 'admin'>('community');
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  // Navigation state is derived from the URL (see src/lib/routes.ts). The setters below keep
+  // the original context contract but navigate instead of mutating in-memory state.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const route = parseRoute(location.pathname);
+  const activeTab = route.tab;
+  const selectedCourseId = route.courseId;
+  const selectedLessonId = route.lessonId;
+
+  // Several handlers call two setters back-to-back (e.g. course then lesson). Track the
+  // latest intended location within the current tick so the second call builds on the first
+  // and replaces the intermediate history entry instead of pushing a duplicate.
+  const pendingNav = useRef<{ tab: AppTab; courseId: string | null } | null>(null);
+  const currentNav = () => pendingNav.current ?? { tab: activeTab, courseId: selectedCourseId };
+  const go = (path: string, next: { tab: AppTab; courseId: string | null }) => {
+    const chained = pendingNav.current !== null;
+    pendingNav.current = next;
+    if (!chained) queueMicrotask(() => { pendingNav.current = null; });
+    if (!chained && path === location.pathname) return;
+    navigate(path, { replace: chained });
+  };
+
+  const setActiveTab = (tab: AppTab) => go(routes.tab(tab), { tab, courseId: null });
+  const setSelectedCourseId = (id: string | null) => {
+    if (id) return go(routes.course(id), { tab: 'classroom', courseId: id });
+    if (currentNav().tab === 'classroom') go(routes.tab('classroom'), { tab: 'classroom', courseId: null });
+  };
+  const setSelectedLessonId = (id: string | null) => {
+    const { tab, courseId } = currentNav();
+    if (tab !== 'classroom' || !courseId) return;
+    go(id ? routes.lesson(courseId, id) : routes.course(courseId), { tab, courseId });
+  };
+
+  // Normalise legacy or unknown URLs (e.g. "/", "/creator", "/leaderboard") to canonical paths.
+  useEffect(() => {
+    const canonical = canonicalPath(route);
+    if (canonical !== location.pathname.replace(/\/+$/, '') ) {
+      navigate(canonical + location.search + location.hash, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
