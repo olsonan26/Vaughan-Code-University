@@ -1,85 +1,161 @@
-import { Course, Post, CommunityEvent, Badge, LevelInfo, SubscriptionPlan, User } from '../types';
+import {
+  Badge,
+  CommunityEvent,
+  Course,
+  LevelInfo,
+  Lesson,
+  Post,
+  SubscriptionPlan,
+  User,
+} from '../types';
+
+const VIDEO_SAMPLE = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+const AUDIO_SAMPLE = 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg';
+const PDF_SAMPLE = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+
+function lesson(
+  id: string,
+  title: string,
+  description: string,
+  type: Lesson['type'],
+  durationMinutes: number,
+  isProOnly = false,
+  contentMarkdown?: string,
+): Lesson {
+  const base: Lesson = {
+    id,
+    title,
+    description,
+    type,
+    durationMinutes,
+    xpReward: type === 'quiz' ? 50 : 20,
+    isProOnly,
+    contentMarkdown:
+      contentMarkdown ||
+      `### ${title}
+
+${description}
+
+#### Study rule
+Calculate carefully, preserve the full compound trail, and interpret a number according to the position in which it appears.`,
+  };
+
+  if (type === 'video') base.videoUrl = VIDEO_SAMPLE;
+  if (type === 'audio') base.audioUrl = AUDIO_SAMPLE;
+  if (type === 'pdf') {
+    base.pdfUrl = PDF_SAMPLE;
+    base.pdfFileName = `${id.replace(/-/g, '_')}_study_guide.pdf`;
+    base.pdfFileSize = 'Study PDF';
+  }
+  return base;
+}
+
+function moduleBlock(
+  id: string,
+  title: string,
+  description: string,
+  lessons: Lesson[],
+): Course['modules'][number] {
+  return { id, title, description, lessons };
+}
+
+function generateActivityHistory(activeCount: number): { date: string; count: number }[] {
+  const result: { date: string; count: number }[] = [];
+  const today = new Date('2026-09-03');
+  for (let i = 60; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const rand = Math.sin(i * 12.9898) * 43758.5453;
+    const isDayActive = (Math.abs(rand) % 1) < activeCount / 120;
+    result.push({
+      date: dateStr,
+      count: isDayActive ? Math.floor((Math.abs(rand) % 4) + 1) : 0,
+    });
+  }
+  return result;
+}
 
 export const LEVEL_TIERS: LevelInfo[] = [
   {
     level: 1,
-    title: 'Novice Pioneer',
+    title: 'New Student',
     minXp: 0,
     maxXp: 100,
-    perks: ['Access to Community Discussions & Feed', 'Access to Starter Foundations Course (Module 1)', 'Create Discussions & Comment on Teachings'],
+    perks: ['Community access', 'VC 101 foundations', 'Ask questions and join discussions'],
     icon: '🌱',
     color: 'from-emerald-500 to-teal-600',
   },
   {
     level: 2,
-    title: 'Active Apprentice',
+    title: 'Code Apprentice',
     minXp: 100,
     maxXp: 300,
-    perks: ['Full Audio Pod-Teachings & Transcripts unlocked', 'Downloadable PDF Study Cheatsheets & Blueprints', 'Ability to create Interactive Community Polls'],
-    icon: '⚡',
+    perks: ['Full VC 101 access', 'Study guides and calculation practice', 'Audio teachings'],
+    icon: '🔢',
     color: 'from-blue-500 to-cyan-600',
   },
   {
     level: 3,
-    title: 'Dedicated Scholar',
+    title: 'Chart Student',
     minXp: 300,
     maxXp: 700,
-    perks: ['Mastery Quizzes & Practice Tests unlocked', 'Direct Peer Messaging & Study Collaboration', 'Exclusive VIP Blueprint Case Studies archive'],
-    icon: '🔥',
+    perks: ['Identity chart practice', 'Certification quizzes', 'Community case studies'],
+    icon: '📘',
     color: 'from-indigo-500 to-purple-600',
   },
   {
     level: 4,
-    title: 'Elite Practitioner',
+    title: 'Pattern Practitioner',
     minXp: 700,
     maxXp: 1500,
-    perks: ['Advanced Systems Architecture Modules unlocked', 'Join Weekly Live Q&A Stages & Workshops', 'Custom Profile Gold Border & Community Flare'],
-    icon: '⭐',
+    perks: ['Advanced chart exercises', 'Live workshops', 'Historical validation practice'],
+    icon: '🧩',
     color: 'from-amber-500 to-orange-600',
   },
   {
     level: 5,
-    title: 'Community Champion',
+    title: 'Chart Analyst',
     minXp: 1500,
     maxXp: 3000,
-    perks: ['1-on-1 Office Hours with Instructor Alexander Kotzev', 'Host Community Study Breakout Rooms', 'Leaderboard Podium Crown & Custom Status Tag'],
-    icon: '👑',
+    perks: ['Complete identity synthesis labs', 'Peer study collaboration', 'Case-study submissions'],
+    icon: '📊',
     color: 'from-rose-500 to-pink-600',
   },
   {
     level: 6,
-    title: 'Grandmaster Researcher',
+    title: 'Timeline Analyst',
     minXp: 3000,
     maxXp: 5000,
-    perks: ['All Creator Mastermind recordings unlocked', 'Direct review & feedback on your research papers', 'University Hall of Fame Recognition'],
-    icon: '🏆',
+    perks: ['Annual and monthly timeline labs', 'Power Number context exercises', 'Timeline workshops'],
+    icon: '🗓️',
     color: 'from-purple-600 to-amber-500',
   },
   {
     level: 7,
-    title: 'Fellow Mastermind',
+    title: 'Advanced Practitioner',
     minXp: 5000,
     maxXp: 7500,
-    perks: ['Co-Host University Workshops with Faculty', 'Early beta access to new decoding blueprints', 'VIP Private Mastermind Channel Access'],
-    icon: '🔮',
+    perks: ['Advanced case-study archive', 'Study-room leadership', 'Early access to new teaching material'],
+    icon: '🧭',
     color: 'from-violet-600 to-indigo-600',
   },
   {
     level: 8,
-    title: 'High Chancellor',
+    title: 'Vaughan Code Scholar',
     minXp: 7500,
     maxXp: 9500,
-    perks: ['Direct priority consultation with Prof. Vaughan', 'Faculty Board Advisory seat invitation', 'Custom University Research Fellow Certificate'],
-    icon: '🏛️',
+    perks: ['Advanced synthesis workshops', 'Faculty Q&A priority', 'Scholar recognition'],
+    icon: '🎓',
     color: 'from-amber-600 to-yellow-500',
   },
   {
     level: 9,
-    title: 'Sovereign Codebreaker',
+    title: 'Master Code Analyst',
     minXp: 9500,
     maxXp: 15000,
-    perks: ['Maximum Mastery Status Achieved', 'Lifetime Honorary VCU Fellowship', 'Full Unrestricted System & Archival Access'],
-    icon: '✨',
+    perks: ['Maximum learning level', 'Master analyst recognition', 'Full curriculum access'],
+    icon: '🏆',
     color: 'from-yellow-400 via-amber-500 to-red-500',
   },
 ];
@@ -87,26 +163,26 @@ export const LEVEL_TIERS: LevelInfo[] = [
 export const BADGES: Badge[] = [
   {
     id: 'first-step',
-    name: 'First Step',
-    description: 'Completed your first classroom lesson.',
-    icon: '🚀',
+    name: 'First Calculation',
+    description: 'Completed your first letter-to-number calculation.',
+    icon: '🔢',
     category: 'learning',
     xpReward: 25,
     requirement: 'Complete 1 lesson',
   },
   {
     id: 'quiz-master',
-    name: 'Quiz Master',
-    description: 'Passed your first knowledge certification test with 80%+ score.',
-    icon: '🧠',
+    name: 'Compound Keeper',
+    description: 'Demonstrated that the full compound trail should be preserved before reduction.',
+    icon: '🧮',
     category: 'mastery',
     xpReward: 50,
-    requirement: 'Pass 1 test with >=80%',
+    requirement: 'Pass 1 certification test with 80%+',
   },
   {
     id: 'streak-7',
-    name: 'Week on Fire',
-    description: 'Maintained an active 7-day daily learning streak.',
+    name: '7 Day Study Streak',
+    description: 'Maintained seven consecutive days of study activity.',
     icon: '🔥',
     category: 'streak',
     xpReward: 100,
@@ -114,48 +190,48 @@ export const BADGES: Badge[] = [
   },
   {
     id: 'discussion-starter',
-    name: 'Community Voice',
-    description: 'Published a high-engagement post in the community feed.',
+    name: 'Community Helper',
+    description: 'Contributed a useful question, answer, or study discussion.',
     icon: '💬',
     category: 'engagement',
     xpReward: 30,
-    requirement: 'Create 1 post',
+    requirement: 'Create 1 community post',
   },
   {
     id: 'audio-listener',
     name: 'Deep Listener',
-    description: 'Completed a full audio teaching with transcript review.',
+    description: 'Completed an audio teaching and reviewed the lesson notes.',
     icon: '🎧',
     category: 'learning',
     xpReward: 35,
-    requirement: 'Complete 1 audio lesson',
+    requirement: 'Complete 1 audio teaching',
   },
   {
     id: 'pdf-scholar',
-    name: 'Resource Hunter',
-    description: 'Downloaded and studied an official teaching PDF & Guidebook.',
+    name: 'First Chart',
+    description: 'Completed a chart worksheet or study blueprint.',
     icon: '📄',
     category: 'learning',
     xpReward: 35,
-    requirement: 'Study 1 PDF teaching',
+    requirement: 'Complete 1 chart study guide',
   },
   {
     id: 'course-graduate',
     name: 'Course Graduate',
-    description: 'Completed 100% of a full masterclass course and earned certificate.',
+    description: 'Completed a full Vaughan Code course and its certification.',
     icon: '🎓',
     category: 'mastery',
     xpReward: 200,
-    requirement: '100% complete 1 course',
+    requirement: 'Complete 100% of 1 course',
   },
   {
     id: 'pro-member',
-    name: 'Pro Subscriber',
-    description: 'Subscribed to the Pro or VIP Community Tier.',
-    icon: '💎',
-    category: 'special',
-    xpReward: 150,
-    requirement: 'Upgrade to Pro / VIP',
+    name: 'Power Spotter',
+    description: 'Recognized a Power Number and identified the chart position in which it appeared.',
+    icon: '⚡',
+    category: 'mastery',
+    xpReward: 75,
+    requirement: 'Complete Power Number context practice',
   },
 ];
 
@@ -165,13 +241,13 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'Free Community',
     priceMonthly: 0,
     priceAnnual: 0,
-    description: 'Essential access to public community discussions and starter course.',
+    description: 'Community access plus the opening Vaughan Code foundations.',
     features: [
-      'Access to General Community Feed',
-      'Starter Foundations Course (Module 1)',
-      'Basic Gamification & Level Progression',
-      'Public Live Events viewing',
-      'Standard Member Profile',
+      'General Community Feed',
+      'VC 101 starter lessons',
+      'Basic XP and level progression',
+      'Public live-event viewing',
+      'Member profile',
     ],
   },
   {
@@ -179,18 +255,17 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'Pro Scholar',
     priceMonthly: 29,
     priceAnnual: 290,
-    description: 'Full classroom access, PDF blueprints, audio teachings, and all tests.',
+    description: 'Full classroom access, study blueprints, audio teachings, and certifications.',
     isPopular: true,
     badgeText: 'MOST POPULAR',
     features: [
-      'All 4+ Masterclass Courses Unlocked',
-      'Downloadable PDF Blueprints & Cheatsheets',
-      'Full Audio Pod-Teachings & Transcripts',
-      'Interactive Certification Quizzes & Tests',
-      'Verified Pro Member Badge in Community',
-      'Weekly Live Interactive Q&A RSVP',
-      'Course Completion Certificates',
-      'Direct Member Messaging',
+      'Full VC 101, VC 201 and VC 301 curriculum',
+      'Downloadable study guides and chart blueprints',
+      'Audio teachings and transcripts',
+      'Certification quizzes',
+      'Weekly live Q&A access',
+      'Course completion certificates',
+      'Direct member messaging',
     ],
   },
   {
@@ -198,16 +273,15 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'VIP Mastermind',
     priceMonthly: 79,
     priceAnnual: 790,
-    description: 'Private 1-on-1 coaching access, masterminds, and creator assets.',
+    description: 'Everything in Pro plus private study sessions and advanced workshops.',
     badgeText: 'PREMIUM VIP',
     features: [
-      'Everything in Pro Scholar Tier',
-      'Monthly 1-on-1 Private Mentorship Stage',
-      'Private VIP Mastermind Channel & Room',
-      'Direct priority DM line to Headmaster Prof. Vaughan & Instructor Alexander Kotzev',
-      'Custom Teachings & Feedback on your Work',
-      'Downloadable Source Code & Asset Bundles',
-      'VIP Gold Profile Border & Custom Flare',
+      'Everything in Pro Scholar',
+      'Private mastermind sessions',
+      'Advanced chart and timeline workshops',
+      'Priority Q&A access with faculty',
+      'Feedback on submitted chart practice',
+      'VIP community room',
     ],
   },
 ];
@@ -216,7 +290,7 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'user-creator',
     name: 'Prof. Vaughan',
-    title: 'Main Creator / Headmaster',
+    title: 'Headmaster / Lead Instructor',
     email: 'vaughan@vaughancode.edu',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     role: 'creator',
@@ -224,161 +298,316 @@ export const INITIAL_USERS: User[] = [
     level: 9,
     xp: 9950,
     streakDays: 88,
-    lastActiveDate: '2026-09-01',
-    bio: 'Founder & Headmaster of Vaughan Code University. Originator and master theorist of the Vaughan Code decoding systems for language, identity blueprints, and cyclical timelines.',
+    lastActiveDate: '2026-09-03',
+    bio: 'Headmaster and Lead Instructor of Vaughan Code University.',
     joinedDate: 'Jan 2024',
-    location: 'Cambridge, MA',
-    socials: {
-      twitter: '@prof_vaughan',
-      github: 'vaughan-code-uni',
-      website: 'https://vaughancode.edu',
-    },
+    interests: ['Teaching', 'Chart interpretation', 'Timeline analysis'],
+    socials: {},
     badges: ['first-step', 'quiz-master', 'streak-7', 'discussion-starter', 'audio-listener', 'pdf-scholar', 'course-graduate', 'pro-member'],
-    completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3', 'les-1-4', 'les-2-1', 'les-2-2', 'les-2-3', 'les-3-1', 'les-3-2', 'les-3-3', 'les-3-4'],
+    completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3', 'les-1-4', 'les-2-1', 'les-2-2', 'les-2-3', 'les-3-1', 'les-3-2', 'les-3-3'],
     passedTestIds: ['quiz-1', 'quiz-2', 'quiz-3'],
     activityHistory: generateActivityHistory(120),
   },
   {
     id: 'user-instructor',
     name: 'Alexander Kotzev',
-    title: 'Instructor',
+    title: 'Instructor / Moderator',
     email: 'alexander.kotzev@vaughancode.edu',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     role: 'creator',
     subscriptionTier: 'vip',
-    level: 7,
-    xp: 6420,
+    level: 8,
+    xp: 8200,
     streakDays: 45,
-    lastActiveDate: '2026-09-01',
-    bio: 'Instructor at Vaughan Code University. Leading practical blueprint laboratories, masterclasses, and guiding scholars in applying the Vaughan Code to human blueprints and chronological cycles.',
+    lastActiveDate: '2026-09-03',
+    bio: 'Instructor and Moderator at Vaughan Code University, focused on practical chart building, identity synthesis, and timeline study.',
     joinedDate: 'Jan 2025',
-    location: 'Boston, MA',
-    socials: {
-      twitter: '@alexander_kotzev',
-      github: 'vaughan-code-uni',
-      website: 'https://vaughancode.edu',
-    },
+    interests: ['Chart building', 'Student support', 'Timeline practice'],
+    socials: {},
     badges: ['first-step', 'quiz-master', 'streak-7', 'discussion-starter', 'audio-listener', 'pdf-scholar', 'course-graduate', 'pro-member'],
     completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3', 'les-1-4', 'les-2-1', 'les-2-2', 'les-2-3', 'les-3-1', 'les-3-2'],
-    passedTestIds: ['quiz-1', 'quiz-2', 'quiz-3'],
+    passedTestIds: ['quiz-1', 'quiz-2'],
     activityHistory: generateActivityHistory(110),
+  },
+  {
+    id: 'user-moderator-carolyn',
+    name: 'Carolyn',
+    title: 'Moderator',
+    email: 'carolyn@vaughancode.local',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    role: 'moderator',
+    subscriptionTier: 'vip',
+    level: 5,
+    xp: 2100,
+    streakDays: 16,
+    lastActiveDate: '2026-09-03',
+    bio: 'Vaughan Code University Community Moderator.',
+    joinedDate: 'Sep 2026',
+    interests: ['Community support'],
+    socials: {},
+    badges: ['first-step', 'discussion-starter'],
+    completedLessonIds: ['les-1-1', 'les-1-2'],
+    passedTestIds: [],
+    activityHistory: generateActivityHistory(80),
+  },
+  {
+    id: 'user-moderator-soarsa',
+    name: 'Soarsa',
+    title: 'Moderator',
+    email: 'soarsa@vaughancode.local',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    role: 'moderator',
+    subscriptionTier: 'vip',
+    level: 5,
+    xp: 2050,
+    streakDays: 14,
+    lastActiveDate: '2026-09-03',
+    bio: 'Vaughan Code University Community Moderator.',
+    joinedDate: 'Sep 2026',
+    interests: ['Community support'],
+    socials: {},
+    badges: ['first-step', 'discussion-starter'],
+    completedLessonIds: ['les-1-1', 'les-1-2'],
+    passedTestIds: [],
+    activityHistory: generateActivityHistory(78),
+  },
+  {
+    id: 'user-moderator-julie',
+    name: 'Julie',
+    title: 'Moderator',
+    email: 'julie@vaughancode.local',
+    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+    role: 'moderator',
+    subscriptionTier: 'vip',
+    level: 5,
+    xp: 1980,
+    streakDays: 12,
+    lastActiveDate: '2026-09-03',
+    bio: 'Vaughan Code University Community Moderator.',
+    joinedDate: 'Sep 2026',
+    interests: ['Community support'],
+    socials: {},
+    badges: ['first-step', 'discussion-starter'],
+    completedLessonIds: ['les-1-1'],
+    passedTestIds: [],
+    activityHistory: generateActivityHistory(76),
   },
   {
     id: 'user-pro',
     name: 'Jordan Lee',
-    title: 'Senior Research Fellow',
-    email: 'jordan@patternresearch.org',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    title: 'Level 4 Student',
+    email: 'jordan@example.com',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
     role: 'member',
     subscriptionTier: 'pro',
     level: 4,
     xp: 1120,
     streakDays: 14,
-    lastActiveDate: '2026-09-01',
-    bio: 'Research Fellow decoding linguistic matrices, human blueprints, and timeline trajectories at Vaughan Code University.',
-    joinedDate: 'March 2025',
-    location: 'Oxford, UK',
-    socials: {
-      twitter: '@jordan_vcode',
-      github: 'jordanlee-patterns',
-    },
-    badges: ['first-step', 'quiz-master', 'streak-7', 'discussion-starter', 'audio-listener', 'pro-member'],
-    completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3', 'les-1-4', 'les-2-1', 'les-2-2'],
-    passedTestIds: ['quiz-1', 'quiz-2'],
+    lastActiveDate: '2026-09-03',
+    bio: 'Studying identity charts and beginning annual timeline analysis.',
+    joinedDate: 'Mar 2026',
+    interests: ['Identity charts', 'Timeline practice'],
+    socials: {},
+    badges: ['first-step', 'quiz-master', 'streak-7', 'discussion-starter'],
+    completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3', 'les-1-4', 'les-2-1'],
+    passedTestIds: ['quiz-1'],
     activityHistory: generateActivityHistory(85),
   },
   {
     id: 'user-free',
     name: 'Sam Taylor',
-    title: 'Research Scholar',
-    email: 'sam@linguisticstudies.net',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    title: 'New Student',
+    email: 'sam@example.com',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     role: 'member',
     subscriptionTier: 'free',
     level: 1,
     xp: 45,
     streakDays: 2,
-    lastActiveDate: '2026-09-01',
-    bio: 'Linguistics student examining the mathematical conversion of alphabetic structures and historical name patterns.',
-    joinedDate: 'August 2026',
-    location: 'Boston, MA',
+    lastActiveDate: '2026-09-03',
+    bio: 'Learning letter conversion and compound-number trails in VC 101.',
+    joinedDate: 'Aug 2026',
+    interests: ['Foundations'],
     socials: {},
     badges: ['first-step'],
     completedLessonIds: ['les-1-1'],
     passedTestIds: [],
-    activityHistory: generateActivityHistory(12),
-  },
-  {
-    id: 'user-4',
-    name: 'Elena Rostova',
-    email: 'elena@forensictimelines.io',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    role: 'member',
-    subscriptionTier: 'pro',
-    level: 5,
-    xp: 2240,
-    streakDays: 28,
-    lastActiveDate: '2026-09-01',
-    bio: 'Forensic analyst and pattern researcher validating historical timeline correlations and ESS/COM progression cycles.',
-    joinedDate: 'Feb 2025',
-    badges: ['first-step', 'quiz-master', 'streak-7', 'audio-listener', 'pdf-scholar', 'course-graduate', 'pro-member'],
-    completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3', 'les-1-4', 'les-2-1', 'les-2-2', 'les-2-3', 'les-3-1', 'les-3-2'],
-    passedTestIds: ['quiz-1', 'quiz-2'],
-    activityHistory: generateActivityHistory(110),
-  },
-  {
-    id: 'user-5',
-    name: 'Marcus Sterling',
-    email: 'marcus@identitymatrices.edu',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    role: 'member',
-    subscriptionTier: 'vip',
-    level: 4,
-    xp: 1420,
-    streakDays: 19,
-    lastActiveDate: '2026-09-01',
-    bio: 'Behavioral pattern analyst specializing in the Human Blueprint, subconscious habits, and executive life cycle mapping.',
-    joinedDate: 'April 2025',
-    badges: ['first-step', 'quiz-master', 'streak-7', 'discussion-starter', 'pro-member'],
-    completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3', 'les-2-1'],
-    passedTestIds: ['quiz-1'],
-    activityHistory: generateActivityHistory(95),
-  },
-  {
-    id: 'user-6',
-    name: 'Maya Chen',
-    email: 'maya@chronostudies.org',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-    role: 'member',
-    subscriptionTier: 'pro',
-    level: 3,
-    xp: 590,
-    streakDays: 8,
-    lastActiveDate: '2026-08-31',
-    bio: 'Archival researcher exploring historical code breaking and chronological cycle validation at VCU.',
-    joinedDate: 'June 2025',
-    badges: ['first-step', 'discussion-starter', 'pro-member'],
-    completedLessonIds: ['les-1-1', 'les-1-2', 'les-1-3'],
-    passedTestIds: ['quiz-1'],
-    activityHistory: generateActivityHistory(60),
+    activityHistory: generateActivityHistory(30),
   },
 ];
 
-function generateActivityHistory(activeCount: number): { date: string; count: number }[] {
-  const result: { date: string; count: number }[] = [];
-  const today = new Date('2026-09-01');
-  for (let i = 60; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    // deterministic pseudo-random
-    const rand = Math.sin(i * 12.9898) * 43758.5453;
-    const isDayActive = (Math.abs(rand) % 1) < (activeCount / 120);
-    const count = isDayActive ? Math.floor((Math.abs(rand) % 6) + 1) : 0;
-    result.push({ date: dateStr, count });
-  }
-  return result;
-}
+const vc101Quiz = lesson(
+  'les-1-12',
+  'Teaching 4.3: VC 101 Certification Exam — The Language Code',
+  'Test calculation accuracy, compound retention, and position awareness.',
+  'quiz',
+  12,
+  false,
+);
+vc101Quiz.quiz = {
+  id: 'quiz-1',
+  title: 'VC 101 Certification: Language Code Foundations',
+  description: 'Demonstrate accurate letter conversion, reduction, compound retention, and position awareness.',
+  passingScorePercentage: 80,
+  xpReward: 50,
+  questions: [
+    {
+      id: 'q1-1',
+      question: 'Why should a result such as 28 → 10 → 1 be preserved rather than recorded only as 1?',
+      options: [
+        'Because the compound trail preserves how the root number was reached',
+        'Because single digits are invalid',
+        'Because every compound is a Power Number',
+        'Because the extra numbers are only decorative',
+      ],
+      correctAnswerIndex: 0,
+      explanation: 'The Vaughan Code preserves the calculation route. The root matters, but so does the compound trail that produced it.',
+    },
+    {
+      id: 'q1-2',
+      question: 'What value does the letter J have in the standard repeating 1–9 letter key?',
+      options: ['1', '2', '9', '10'],
+      correctAnswerIndex: 0,
+      explanation: 'After I = 9, the sequence repeats. J = 1.',
+    },
+    {
+      id: 'q1-3',
+      question: 'Why does chart position matter?',
+      options: [
+        'Because the same number answers a different question depending on where it appears',
+        'Because only birth-date numbers have meaning',
+        'Because names are ignored after childhood',
+        'Because every position uses the same interpretation',
+      ],
+      correctAnswerIndex: 0,
+      explanation: 'A number found in Heart’s Desire is describing something different from the same number found in the Day of Birth or Total Birth Date.',
+    },
+    {
+      id: 'q1-4',
+      question: 'Which numbers are specifically introduced as Power Numbers in the Vaughan system?',
+      options: ['11, 13 and 16', '2, 4 and 8', '10, 20 and 30', '3, 6 and 9 only'],
+      correctAnswerIndex: 0,
+      explanation: '11, 13 and 16 are specifically taught as Power Numbers. Their interpretation depends on where they appear.',
+    },
+  ],
+};
+
+const vc201Quiz = lesson(
+  'les-2-18',
+  'Teaching 9.2: VC 201 Certification Exam — The Identity Code',
+  'Demonstrate that you can keep the identity positions separate and synthesize them correctly.',
+  'quiz',
+  15,
+  true,
+);
+vc201Quiz.quiz = {
+  id: 'quiz-2',
+  title: 'VC 201 Certification: Identity Code',
+  description: 'Test your understanding of First Name, Called Name, Whole Name, Heart’s Desire, Day, Total Birth Date, and Ultimate Goal.',
+  passingScorePercentage: 80,
+  xpReward: 50,
+  questions: [
+    {
+      id: 'q2-1',
+      question: 'Which position governs natural skills and talents?',
+      options: ['Total Birth Date', 'Day of Birth', 'Heart’s Desire', 'Called Name'],
+      correctAnswerIndex: 0,
+      explanation: 'The Total Birth Date describes natural skills, talents, characteristics, and capacity.',
+    },
+    {
+      id: 'q2-2',
+      question: 'What does the Day of Birth primarily describe?',
+      options: ['Habits and natural traits', 'Long-term destination', 'Social second impressions', 'Full personality'],
+      correctAnswerIndex: 0,
+      explanation: 'The Day of Birth is read for habits, natural traits, and repeated/default behavior.',
+    },
+    {
+      id: 'q2-3',
+      question: 'How is the Ultimate Goal formed?',
+      options: [
+        'Whole Name + Total Birth Date',
+        'First Name + Day of Birth',
+        'Vowels + Personal Year',
+        'Called Name + Calendar Month',
+      ],
+      correctAnswerIndex: 0,
+      explanation: 'The Ultimate Goal combines the Whole Name with the Total Birth Date and speaks to longer-term direction.',
+    },
+    {
+      id: 'q2-4',
+      question: 'Which layer is most directly associated with internal motivation and desire?',
+      options: ['Heart’s Desire / Vowels', 'Called Name', 'Calendar Year', 'Combiner'],
+      correctAnswerIndex: 0,
+      explanation: 'The vowel total is the Heart’s Desire and relates to motivation, passions, and inner emotional drive.',
+    },
+  ],
+};
+
+const vc301Quiz = lesson(
+  'les-3-24',
+  'Teaching 8.3: VC 301 Master Certification — The Timeline Code',
+  'Test annual, monthly, and historical-validation understanding.',
+  'quiz',
+  18,
+  true,
+);
+vc301Quiz.quiz = {
+  id: 'quiz-3',
+  title: 'VC 301 Master Certification: Timeline Code',
+  description: 'Demonstrate correct use of Essence, Personal Year, Combiner, monthly layers, and validation practice.',
+  passingScorePercentage: 80,
+  xpReward: 50,
+  questions: [
+    {
+      id: 'q3-1',
+      question: 'What does the annual Essence primarily describe?',
+      options: [
+        'The internal condition and how the person is feeling or experiencing themselves',
+        'The subscription tier',
+        'The person’s complete personality',
+        'The Calendar Month only',
+      ],
+      correctAnswerIndex: 0,
+      explanation: 'Essence is derived from the active letters and relates to the internal experience during that period.',
+    },
+    {
+      id: 'q3-2',
+      question: 'What does the Personal Year primarily describe?',
+      options: [
+        'The conditions and environment around the person',
+        'Only the person’s vowels',
+        'The First Name',
+        'The Whole Name',
+      ],
+      correctAnswerIndex: 0,
+      explanation: 'The Personal Year describes the conditions the person is moving through.',
+    },
+    {
+      id: 'q3-3',
+      question: 'What is the annual Combiner?',
+      options: [
+        'Essence + Personal Year',
+        'First Name + Whole Name',
+        'Day + Vowels',
+        'Personal Month + Calendar Year',
+      ],
+      correctAnswerIndex: 0,
+      explanation: 'The Combiner is the result of Essence + Personal Year and is used to understand the interaction and appropriate response.',
+    },
+    {
+      id: 'q3-4',
+      question: 'Why validate known past events before attempting forward analysis?',
+      options: [
+        'To test the chart against documented reality and improve interpretation discipline',
+        'To guarantee every future event',
+        'To avoid doing any calculations',
+        'To replace the annual chart with a biography',
+      ],
+      correctAnswerIndex: 0,
+      explanation: 'Historical validation gives the student a way to test calculations and interpretations against events that are already known.',
+    },
+  ],
+};
 
 export const INITIAL_COURSES: Course[] = [
   {
@@ -388,300 +617,48 @@ export const INITIAL_COURSES: Course[] = [
     slug: 'the-language-code',
     tagline: 'How Letters Become Numbers',
     category: 'Foundations',
-    description: 'Learn the foundation of the Vaughan Code. Discover how letters are converted into numerical structures, why compound numbers matter, how reductions work, and how hidden patterns begin forming inside names.',
+    description: 'Learn the Vaughan Code language: the number key, letter conversion, compound trails, reduction, position awareness, and the foundations needed to calculate accurately.',
     thumbnail: '/src/assets/images/vc101_language_code_1788336655344.jpg',
     author: {
       id: 'user-creator',
       name: 'Prof. Vaughan',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      role: 'Main Creator / Headmaster',
+      role: 'Headmaster / Lead Instructor',
     },
     requiredTier: 'free',
     requiredLevel: 1,
     createdAt: '2026-01-15',
-    updatedAt: '2026-08-20',
+    updatedAt: '2026-09-03',
     modules: [
-      {
-        id: 'mod-1-1',
-        title: 'Module 1: Foundations of Numerical Conversion',
-        description: 'Discover how letters are converted into numerical structures and the core architecture of linguistic mapping.',
-        lessons: [
-          {
-            id: 'les-1-1',
-            title: 'Teaching 1.1: The Conversion Matrix — How Letters Become Numbers',
-            description: 'Orientation to the mathematical foundations of the alphabet, sound frequencies, and numerical assignments.',
-            type: 'video',
-            durationMinutes: 14,
-            xpReward: 20,
-            videoUrl: 'https://www.youtube.com/watch?v=09v3u2J1hWY',
-            contentMarkdown: `### The Foundations of the Vaughan Code 🏛️
+      moduleBlock('mod-1-1', 'Module 1: The Language of Numbers', 'Learn the base language before interpreting people.', [
+        lesson('les-1-1', 'Teaching 1.1: Welcome — This Is a Method You Work With', 'An orientation to calculation, observation, practice, and testing patterns for yourself.', 'video', 10, false,
+          `### Welcome to the Vaughan Code
 
-In this foundational teaching, Headmaster Prof. Vaughan presents:
-1. **Linguistic Transmutation**: How alphabetic structures correspond to precise numerical constants (A=1, B=2, C=3...).
-2. **Compound Values**: Why compound sums (such as 10, 19, 28, 37) carry unique harmonic properties before single-digit reduction.
-3. **The Analytic Lens**: Approaching language as structured mathematical intelligence rather than arbitrary symbolism.
+The Vaughan Code is learned by working with it.
 
-#### Key Principles:
-- Letters are phonetic representations of numerical frequencies.
-- The order and grouping of vowels versus consonants produce distinct analytical vectors.
-- Exactness in calculation is required to preserve subtle compound markers.`,
-            resources: [
-              {
-                title: 'The Vaughan Code Letter-to-Number Matrix Blueprint (PDF)',
-                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                type: 'pdf',
-                size: '2.4 MB',
-              },
-            ],
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-2',
-            title: 'Teaching 1.2: Audio Masterclass — Compound Numbers vs. Single Digit Reductions',
-            description: 'A deep exploration into why compound totals contain the critical nuances that single-digit reductions obscure.',
-            type: 'audio',
-            durationMinutes: 18,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            audioTranscript: `[00:00] Prof. Vaughan: "Welcome to Vaughan Code University. Today we address the most common misconception in historical code breaking: the premature flattening of numbers..."
-[04:15] "When an analyst reduces 29 directly to 11 and then 2, they lose the operative friction between the 2 and the 9..."
-[09:30] "In the Vaughan Code, compound numbers are preserved as dual-state markers. They tell us the route taken before the destination..."
-[15:45] "By mastering compound retention, your decoding precision increases exponentially."`,
-            contentMarkdown: `### Audio Masterclass Summary
+You will calculate names and dates, preserve the trail that produced each result, learn what each chart position governs, and compare interpretations against real examples.
 
-Listen to the audio recording above. Follow along with the transcript or download the study blueprint.
+The goal is not to memorize a collection of fortune-telling meanings.
 
-#### Core Insights:
-- **Dual-State Mechanics**: How a compound number reveals both the process and the end state.
-- **Reduction Safeguards**: Rules for when to preserve compounds and when to evaluate single-digit roots.
-- **Pattern Integrity**: Avoiding destructive reduction in name analysis.`,
-            resources: [
-              {
-                title: 'Compound Number Retention Research Notes (PDF)',
-                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                type: 'pdf',
-                size: '1.8 MB',
-              },
-            ],
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-3',
-            title: 'Teaching 1.3: Blueprint Study — Calculating Multi-Tier Name Reductions',
-            description: 'Step-by-step mathematical guide to calculating individual word sums, compound totals, and harmonic reductions.',
-            type: 'pdf',
-            durationMinutes: 15,
-            xpReward: 25,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_Language_Code_Handbook.pdf',
-            pdfFileSize: '4.8 MB',
-            contentMarkdown: `### The VCU Language Code Master Handbook
-
-This research document details the calculation methods and structural templates used in VC 101.
-
-#### Included in this Guide:
-- 📌 **Section 1**: Complete Letter-to-Number Calibration Tables
-- 📌 **Section 2**: Compound Value Classifications (10 through 52)
-- 📌 **Section 3**: Step-by-Step Reduction Worksheets with Worked Examples
-- 📌 **Section 4**: Linguistic Pattern Identification Matrices`,
-            resources: [
-              {
-                title: 'Download Language Code Blueprint Handbook (PDF)',
-                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                type: 'pdf',
-                size: '4.8 MB',
-              },
-            ],
-            isProOnly: false,
-          },
-        ],
-      },
-      {
-        id: 'mod-1-2',
-        title: 'Module 2: The Numerical Spectrum & Harmonic Weights',
-        description: 'Analyzing the behavioral and qualitative spectrum of numbers 1 through 9 and their compound derivatives.',
-        lessons: [
-          {
-            id: 'les-1-4',
-            title: 'Teaching 2.1: Masterclass Video — The Qualitative Spectrum of Root Numbers',
-            description: 'Understanding each numerical archetype from 1 to 9 as functional operational principles.',
-            type: 'video',
-            durationMinutes: 16,
-            xpReward: 20,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            contentMarkdown: `### Numerical Archetypes in the Vaughan Code
-
-Explore the operational dynamics of the fundamental numbers:
-- **1**: Initiation, independence, pioneer vector, linear focus.
-- **2**: Receptivity, balance, analytical nuance, cooperation.
-- **3**: Expression, triangulation, creative synthesis, dispersion.
-- **4**: Structure, containment, systemic discipline, foundational stability.
-- **5**: Velocity, versatility, transitional pivots, sensory dynamism.
-- **6**: Harmonization, responsibility, structural equilibrium, integration.
-- **7**: Investigative depth, intellectual introspection, forensic analysis.
-- **8**: Executive authority, material manifestation, energetic power loops.
-- **9**: Universal culmination, philosophical perspective, synthesis of all prior codes.`,
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-5',
-            title: 'Teaching 2.2: Research Exercise — Vowel and Consonant Harmonics',
-            description: 'Differentiating internal emotional motivation (vowels) from external behavioral presentation (consonants).',
-            type: 'article',
-            durationMinutes: 12,
-            xpReward: 20,
-            contentMarkdown: `### Vowel and Consonant Harmonic Separation
-
-In the Vaughan Code:
-- **Vowels** represent the internal drive, heart desires, and hidden motive currents.
-- **Consonants** represent the structural carapace, external demeanor, and initial social impressions.
-- **Total Sum** represents the complete synthesized operating frequency.
-
-Analyze how shifting a single vowel modifies internal tension without immediately altering the outer consonant appearance.`,
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-6',
-            title: 'Teaching 2.3: Audio Masterclass — The Sound-Frequency Matrix',
-            description: 'Acoustic linguistics and why phonemes carry deterministic numerical weight.',
-            type: 'audio',
-            durationMinutes: 15,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: false,
-          },
-        ],
-      },
-      {
-        id: 'mod-1-3',
-        title: 'Module 3: Pattern Recognition in Names',
-        description: 'Identifying structural clusters, missing numbers, and dominant frequencies in given and family names.',
-        lessons: [
-          {
-            id: 'les-1-7',
-            title: 'Teaching 3.1: Video Teardown — Historical Name Decoding Case Studies',
-            description: 'Forensic analysis of prominent historical figures and how their full birth names formed distinct patterns.',
-            type: 'video',
-            durationMinutes: 22,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-8',
-            title: 'Teaching 3.2: Research Blueprint — Detecting Missing & Dominant Numbers',
-            description: 'Constructing the 3x3 numeric grid to reveal cognitive blind spots and innate behavioral strengths.',
-            type: 'pdf',
-            durationMinutes: 14,
-            xpReward: 20,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_Name_Grid_Analysis.pdf',
-            pdfFileSize: '3.2 MB',
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-9',
-            title: 'Teaching 3.3: Case Study — Name Changes and Structural Frequency Shifts',
-            description: 'What happens mathematically when an individual changes their legal name, takes a pen name, or uses nicknames.',
-            type: 'article',
-            durationMinutes: 15,
-            xpReward: 20,
-            isProOnly: false,
-          },
-        ],
-      },
-      {
-        id: 'mod-1-4',
-        title: 'Module 4: Synthesis & Level 1 Certification',
-        description: 'Complete synthesis of foundational principles, research examination, and certification credential.',
-        lessons: [
-          {
-            id: 'les-1-10',
-            title: 'Teaching 4.1: Comprehensive Calculation Lab & Practical Exercise',
-            description: 'Hands-on practice calculating full compound profiles for three standardized research subjects.',
-            type: 'article',
-            durationMinutes: 20,
-            xpReward: 30,
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-11',
-            title: 'Teaching 4.2: Masterclass Summary & Level 2 Preparation',
-            description: 'Bridging from language fundamentals to decoding the full human blueprint in VC 201.',
-            type: 'video',
-            durationMinutes: 10,
-            xpReward: 20,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            isProOnly: false,
-          },
-          {
-            id: 'les-1-12',
-            title: 'Teaching 4.3: VC 101 Certification Exam — The Language Code',
-            description: 'Test your understanding of Module 1 through 4. Score 80% or higher to earn your Level 1 Credential and 50 XP.',
-            type: 'quiz',
-            durationMinutes: 12,
-            xpReward: 50,
-            quiz: {
-              id: 'quiz-1',
-              title: 'VC 101 Certification Exam: Language Code Foundations',
-              description: 'Demonstrate rigorous mastery of letter conversion, compound numbers, and vowel/consonant separation.',
-              passingScorePercentage: 80,
-              xpReward: 50,
-              questions: [
-                {
-                  id: 'q1-1',
-                  question: 'Why does the Vaughan Code preserve compound numbers before single-digit reduction?',
-                  options: [
-                    'Because compound numbers contain the specific harmonic process and nuances that single-digit reductions erase',
-                    'To make mathematical calculations longer for aesthetic reasons',
-                    'Because single-digit numbers are not mathematically valid',
-                    'To randomize the outcome of name readings',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'Compound numbers preserve the exact operational journey and tension between constituent numbers before reaching the root frequency.',
-                },
-                {
-                  id: 'q1-2',
-                  question: 'In the Vaughan Code linguistic model, what distinct layer of identity do vowels primarily represent?',
-                  options: [
-                    'The public social persona and outer demeanor',
-                    'The internal motivation, heart\'s desire, and subconscious drive',
-                    'The physical bodily constitution',
-                    'The calendar year cycle exclusively',
-                  ],
-                  correctAnswerIndex: 1,
-                  explanation: 'Vowels decode the innermost emotional currents and driving motivations, whereas consonants represent the outer impression.',
-                },
-                {
-                  id: 'q1-3',
-                  question: 'What is the converted numerical value of the letter "J" in the base 1-9 alphabetical conversion matrix?',
-                  options: [
-                    '1 (as the 10th letter reduces 1+0=1)',
-                    '7',
-                    '9',
-                    '4',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'J is the 10th letter of the alphabet, which maps to 10/1, holding both the pioneering root 1 and the 10 compound octave.',
-                },
-                {
-                  id: 'q1-4',
-                  question: 'How does an individual\'s full birth name interact with subsequent name changes or nicknames in the Vaughan Code?',
-                  options: [
-                    'The birth name is permanently deleted and erased from their timeline',
-                    'The birth name remains the foundational blueprint, while the active name functions as an operational overlay',
-                    'Nicknames have zero mathematical influence under any circumstances',
-                    'Only initials are considered in analysis',
-                  ],
-                  correctAnswerIndex: 1,
-                  explanation: 'The birth name represents the indelible structural blueprint, while current active names modify operational day-to-day frequencies.',
-                },
-              ],
-            },
-            isProOnly: false,
-          },
-        ],
-      },
+The goal is to calculate accurately, understand position, compare layers, and test what you see.`),
+        lesson('les-1-2', 'Teaching 1.2: The Base Number Language', 'Learn the working meanings of the base numbers before applying them to specific chart positions.', 'audio', 16),
+        lesson('les-1-3', 'Teaching 1.3: Reduction — Find the Root and Preserve the Trail', 'Practice reduction without discarding compound totals such as 34 → 7 or 28 → 10 → 1.', 'pdf', 16),
+      ]),
+      moduleBlock('mod-1-2', 'Module 2: Turning Letters Into Numbers', 'Convert names accurately using the repeating 1–9 letter key.', [
+        lesson('les-1-4', 'Teaching 2.1: The Vaughan Code Letter Key', 'Learn A=1 through I=9, then repeat the 1–9 sequence through the alphabet.', 'video', 15),
+        lesson('les-1-5', 'Teaching 2.2: First Name Calculation — Maurice', 'Work through M A U R I C E = 4+1+3+9+9+3+5 = 34 → 7 and keep the complete trail.', 'article', 14),
+        lesson('les-1-6', 'Teaching 2.3: Calculation Lab — Accuracy Before Speed', 'Practice several name calculations and verify every letter before interpretation.', 'pdf', 18),
+      ]),
+      moduleBlock('mod-1-3', 'Module 3: Position Changes the Question', 'Understand why the same number means something different in different chart positions.', [
+        lesson('les-1-7', 'Teaching 3.1: One Number, Different Positions', 'Compare the same root number in a name position, a birth position, and a timing position.', 'video', 18),
+        lesson('les-1-8', 'Teaching 3.2: Introduction to Power Numbers 11, 13 and 16', 'Recognize Power Numbers without reducing them away or making a conclusion from one number alone.', 'audio', 18),
+        lesson('les-1-9', 'Teaching 3.3: Pattern Recognition Without Jumping to Conclusions', 'Learn to record what is present before deciding what a pattern means.', 'article', 14),
+      ]),
+      moduleBlock('mod-1-4', 'Module 4: Foundations Synthesis & Certification', 'Bring the foundation together and demonstrate calculation accuracy.', [
+        lesson('les-1-10', 'Teaching 4.1: Complete Calculation Lab', 'Calculate a full set of names while preserving every compound trail.', 'pdf', 20),
+        lesson('les-1-11', 'Teaching 4.2: From Language to Identity', 'Preview how the calculations become different identity positions in VC 201.', 'video', 12),
+        vc101Quiz,
+      ]),
     ],
   },
   {
@@ -691,293 +668,55 @@ Analyze how shifting a single vowel modifies internal tension without immediatel
     slug: 'the-identity-code',
     tagline: 'Reading the Human Blueprint',
     category: 'Human Blueprint',
-    description: "Learn how a person's name and birth date create multiple layers of identity. Decode Initial Impressions, Personality, Heart's Desire, Habits, Natural Skills & Talents, and the Ultimate Goal.",
+    description: 'Learn why a person is not one number. Separate First Name, Called Name, Whole Name, Heart’s Desire, Day of Birth, Total Birth Date, and Ultimate Goal before synthesizing the complete profile.',
     thumbnail: '/src/assets/images/vc201_identity_code_1788336668852.jpg',
     author: {
       id: 'user-instructor',
       name: 'Alexander Kotzev',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: 'Instructor',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      role: 'Instructor / Moderator',
     },
     requiredTier: 'pro',
     requiredLevel: 2,
     createdAt: '2026-02-10',
-    updatedAt: '2026-08-25',
+    updatedAt: '2026-09-03',
     modules: [
-      {
-        id: 'mod-2-1',
-        title: 'Module 1: Initial Impressions & Outer Projection',
-        description: 'Decoding the consonant matrix and the immediate behavioral frequency perceived by others.',
-        lessons: [
-          {
-            id: 'les-2-1',
-            title: 'Teaching 1.1: Video Masterclass — Decoding Initial Impressions',
-            description: 'How first names and consonant structures formulate immediate social and professional impressions.',
-            type: 'video',
-            durationMinutes: 18,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            contentMarkdown: `### The Initial Impression Layer
-
-In this masterclass lesson, Professor Vaughan explores:
-- **The First Name Vector**: The primary operational cadence an individual uses when introducing themselves.
-- **Consonant Carapace**: The defensive and presentational armor formed by the consonant sum.
-- **Congruence Analysis**: Evaluating alignment or discord between outer presentation and inner purpose.`,
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-2',
-            title: 'Teaching 1.2: Audio Briefing — The Outer Personality Formula',
-            description: 'Audio coaching on the exact mathematical calculation of outer personality codes.',
-            type: 'audio',
-            durationMinutes: 20,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-3',
-            title: 'Teaching 1.3: Blueprint Study — Persona Diagnostic Worksheets',
-            description: 'Downloadable worksheets to chart the outer impression metrics across diverse research profiles.',
-            type: 'pdf',
-            durationMinutes: 15,
-            xpReward: 25,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_Outer_Persona_Blueprint.pdf',
-            pdfFileSize: '3.4 MB',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-2-2',
-        title: 'Module 2: The Heart\'s Desire — Vowel Harmonic Matrices',
-        description: 'Uncovering the innermost driving motives, emotional needs, and subconscious desires.',
-        lessons: [
-          {
-            id: 'les-2-4',
-            title: 'Teaching 2.1: Video Deep Dive — The Vowel Harmonic Core',
-            description: 'Why the vowel sum represents the true engine of human decision making and private ambition.',
-            type: 'video',
-            durationMinutes: 22,
-            xpReward: 30,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-5',
-            title: 'Teaching 2.2: Research Paper — Vowel Tensions & Internal Paradoxes',
-            description: 'Analyzing cases where outer personality and heart\'s desire numbers exist in mathematical opposition.',
-            type: 'article',
-            durationMinutes: 16,
-            xpReward: 20,
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-6',
-            title: 'Teaching 2.3: Audio Case Study — Decoding Executive Decision Drivers',
-            description: 'Real-world case studies analyzing how heart desire codes dictate strategic career choices.',
-            type: 'audio',
-            durationMinutes: 19,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-2-3',
-        title: 'Module 3: Habitual Patterns & Subconscious Responses',
-        description: 'Analyzing reflexive behavior, instinctive reaction loops, and stress responses through numerical indicators.',
-        lessons: [
-          {
-            id: 'les-2-7',
-            title: 'Teaching 3.1: Video Lecture — The Habitual Matrix & Stress Reflexes',
-            description: 'How specific compound patterns govern automated behavioral reactions under cognitive load.',
-            type: 'video',
-            durationMinutes: 20,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-8',
-            title: 'Teaching 3.2: Blueprint Guide — Mapping Subconscious Habit Cycles',
-            description: 'A 28-page research workbook on identifying stress loops in behavioral profiles.',
-            type: 'pdf',
-            durationMinutes: 18,
-            xpReward: 25,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_Habitual_Patterns_Guide.pdf',
-            pdfFileSize: '4.1 MB',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-9',
-            title: 'Teaching 3.3: Research Exercise — Interpersonal Behavioral Friction',
-            description: 'Predicting interpersonal friction between opposing habit patterns in professional teams.',
-            type: 'article',
-            durationMinutes: 14,
-            xpReward: 20,
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-2-4',
-        title: 'Module 4: Natural Skills, Talents & Cognitive Instincts',
-        description: 'Extracting the native talents encoded within the full birth name and Day of Birth.',
-        lessons: [
-          {
-            id: 'les-2-10',
-            title: 'Teaching 4.1: Video Masterclass — The Day of Birth Talent Marker',
-            description: 'Why the specific day of birth acts as an innate toolset and specialized cognitive instinct.',
-            type: 'video',
-            durationMinutes: 19,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-11',
-            title: 'Teaching 4.2: Audio Lecture — Synthesizing Birth Date with Name Frequency',
-            description: 'How the physical birth date (nature) interfaces with the nominal code (nurture/identity).',
-            type: 'audio',
-            durationMinutes: 21,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-12',
-            title: 'Teaching 4.3: Research Blueprint — The Natural Skillset Matrix',
-            description: 'Mapping mathematical aptitudes, spatial awareness, linguistic fluency, and executive acumen.',
-            type: 'pdf',
-            durationMinutes: 15,
-            xpReward: 20,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_Talents_Matrix.pdf',
-            pdfFileSize: '3.6 MB',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-2-5',
-        title: 'Module 5: The Ultimate Goal & Life Purpose Synthesis',
-        description: 'Calculating the convergence of the full birth name and complete birth date to reveal the ultimate trajectory.',
-        lessons: [
-          {
-            id: 'les-2-13',
-            title: 'Teaching 5.1: Video Lecture — The Ultimate Goal Formula',
-            description: 'The mathematical integration of Total Name Sum + Full Birth Date Sum.',
-            type: 'video',
-            durationMinutes: 25,
-            xpReward: 30,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-14',
-            title: 'Teaching 5.2: Case Study Breakdown — Iconic Life Trajectories',
-            description: 'Detailed analysis of three transformative historical figures whose life accomplishments mirrored their Ultimate Goal code.',
-            type: 'article',
-            durationMinutes: 18,
-            xpReward: 25,
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-15',
-            title: 'Teaching 5.3: Audio Masterclass — Navigating the Life Pivot Point',
-            description: 'When the Ultimate Goal begins superseding youthful habit patterns in the mid-life cycle.',
-            type: 'audio',
-            durationMinutes: 17,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-2-6',
-        title: 'Module 6: Full Identity Blueprint Synthesis & Certification',
-        description: 'Integrating all 6 identity layers into a unified diagnostic dossier and passing the Level 2 Certification Exam.',
-        lessons: [
-          {
-            id: 'les-2-16',
-            title: 'Teaching 6.1: Comprehensive Research Dossier Assembly Lab',
-            description: 'Step-by-step assembly of a complete 6-layer human blueprint for forensic analysis.',
-            type: 'article',
-            durationMinutes: 22,
-            xpReward: 30,
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-17',
-            title: 'Teaching 6.2: Video Blueprint Review with Alexander Kotzev',
-            description: 'Live teardown of complex blueprint edge cases and compound harmony balancing.',
-            type: 'video',
-            durationMinutes: 18,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-2-18',
-            title: 'Teaching 6.3: VC 201 Certification Exam — The Identity Code',
-            description: 'Demonstrate your ability to decode full human blueprints with precision. Score 80%+ to earn Level 2 Credential.',
-            type: 'quiz',
-            durationMinutes: 15,
-            xpReward: 50,
-            quiz: {
-              id: 'quiz-2',
-              title: 'VC 201 Certification: The Human Blueprint Mastery',
-              description: 'Evaluate your proficiency in synthesizing Initial Impressions, Personality, Heart\'s Desire, and the Ultimate Goal.',
-              passingScorePercentage: 80,
-              xpReward: 50,
-              questions: [
-                {
-                  id: 'q2-1',
-                  question: 'Which two fundamental data vectors combine to generate the Ultimate Goal code in the Vaughan Code system?',
-                  options: [
-                    'The Full Birth Name Total Sum + The Full Birth Date Sum',
-                    'The First Name Consonants + The Current Calendar Year',
-                    'The Day of Birth + The Mother\'s Maiden Name',
-                    'The Vowel Count + The Month Number only',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'The Ultimate Goal is the master synthesis of the nominal blueprint (Full Birth Name) and the chronological blueprint (Full Birth Date).',
-                },
-                {
-                  id: 'q2-2',
-                  question: 'What does a high friction score between the Outer Personality (consonants) and the Heart\'s Desire (vowels) indicate in an individual\'s profile?',
-                  options: [
-                    'The individual experiences a sharp contrast between how the public perceives them and their true private motivations',
-                    'The mathematical calculation was executed incorrectly',
-                    'The individual cannot have a career in research',
-                    'The birth date must be adjusted backward by one year',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'Polarity between consonants and vowels indicates an internal paradox where public role expectations diverge from private core drives.',
-                },
-                {
-                  id: 'q2-3',
-                  question: 'In the Human Blueprint hierarchy, what specialized operational insight does the Day of Birth provide?',
-                  options: [
-                    'The native toolset, instinctive approach to daily challenges, and primary natural skillset',
-                    'The exact date the individual will change careers',
-                    'The financial net worth calculation',
-                    'The individual\'s postal code compatibility',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'The Day of Birth acts as a specialized equipment marker, revealing instinctive talents and preferred problem-solving styles.',
-                },
-              ],
-            },
-            isProOnly: true,
-          },
-        ],
-      },
+      moduleBlock('mod-2-1', 'Module 1: The Main Identity Areas', 'Learn the distinct questions answered by each fixed identity position.', [
+        lesson('les-2-1', 'Teaching 1.1: A Person Is Not One Number', 'Separate personality, motivation, habits, abilities, and long-term direction before synthesis.', 'video', 18, true),
+        lesson('les-2-2', 'Teaching 1.2: The Position Map', 'Map First Name, Whole Name, Vowels, Day, Total Birth Date, and Ultimate Goal, with Called Name as an additional social layer.', 'pdf', 16, true),
+      ]),
+      moduleBlock('mod-2-2', 'Module 2: First Name — Primary Personality', 'Study the entire First Name as the first and most intimate personality layer.', [
+        lesson('les-2-3', 'Teaching 2.1: First Name & Initial Impressions', 'Read the complete First Name as primary personality and early emotional blueprint.', 'video', 20, true),
+        lesson('les-2-4', 'Teaching 2.2: First Name Calculation Lab', 'Calculate First Names accurately and compare their compound trails.', 'article', 16, true),
+      ]),
+      moduleBlock('mod-2-3', 'Module 3: Called Name — Second Impressions', 'Study the socially used First Name + Surname as an additional perception layer.', [
+        lesson('les-2-5', 'Teaching 3.1: How the Called Name Changes the View', 'Compare First Name with Called Name to study how social perception develops.', 'video', 18, true),
+        lesson('les-2-6', 'Teaching 3.2: First, Called, Whole — Three Levels of Personality', 'Practice keeping initial, social, and deeper personality layers separate.', 'audio', 18, true),
+      ]),
+      moduleBlock('mod-2-4', 'Module 4: Whole Name — Full Personality', 'Read the full birth name as the overriding or more complete personality expression.', [
+        lesson('les-2-7', 'Teaching 4.1: The Whole Name', 'Learn what the Full Birth Name governs and how it differs from the First and Called Name.', 'video', 20, true),
+        lesson('les-2-8', 'Teaching 4.2: Whole Name Comparison Lab', 'Compare complete-name totals while preserving the route to each root.', 'pdf', 18, true),
+      ]),
+      moduleBlock('mod-2-5', 'Module 5: Heart’s Desire — Vowels', 'Study the internal motivational and emotional layer.', [
+        lesson('les-2-9', 'Teaching 5.1: The Vowels as Motivation', 'Calculate the vowels in the full name and interpret them as Heart’s Desire, passions, and inner drive.', 'video', 20, true),
+        lesson('les-2-10', 'Teaching 5.2: When Motivation and Personality Differ', 'Practice explaining differences between what a person expresses and what they internally want.', 'article', 16, true),
+      ]),
+      moduleBlock('mod-2-6', 'Module 6: Day of Birth — Habits & Natural Traits', 'Keep the Day position distinct from skills and talents.', [
+        lesson('les-2-11', 'Teaching 6.1: What the Day of Birth Governs', 'Read habits, natural traits, and repeated/default behavior from the Day position.', 'video', 20, true),
+        lesson('les-2-12', 'Teaching 6.2: Preserving the Original Day', 'Practice reading days such as 11, 13, 16, 22, and 29 without immediately erasing the compound.', 'pdf', 16, true),
+      ]),
+      moduleBlock('mod-2-7', 'Module 7: Total Birth Date — Skills & Talents', 'Study natural capacity separately from personality.', [
+        lesson('les-2-13', 'Teaching 7.1: Natural Skills, Talents & Characteristics', 'Use the Total Birth Date to study what the person is naturally equipped to do.', 'video', 20, true),
+        lesson('les-2-14', 'Teaching 7.2: Capacity vs Expression', 'Compare Total Birth Date with name positions to see when ability and personality are aligned or different.', 'article', 17, true),
+      ]),
+      moduleBlock('mod-2-8', 'Module 8: Ultimate Goal — Long-Term Direction', 'Combine Whole Name and Total Birth Date without losing the raw trail.', [
+        lesson('les-2-15', 'Teaching 8.1: The Ultimate Goal Formula', 'Calculate Whole Name + Total Birth Date and preserve the resulting compound trail.', 'video', 22, true),
+        lesson('les-2-16', 'Teaching 8.2: Personality + Capacity = Direction', 'Practice reading the Ultimate Goal as the blended long-term destination rather than a replacement for the other positions.', 'audio', 18, true),
+      ]),
+      moduleBlock('mod-2-9', 'Module 9: Full Profile Synthesis & Certification', 'Bring all identity positions together without forcing them to agree.', [
+        lesson('les-2-17', 'Teaching 9.1: Full Human Profile Synthesis Lab', 'Assemble First Name, Called Name, Whole Name, Heart’s Desire, Day, Total Birth Date, and Ultimate Goal into one coherent reading.', 'article', 24, true),
+        vc201Quiz,
+      ]),
     ],
   },
   {
@@ -988,367 +727,73 @@ In this masterclass lesson, Professor Vaughan explores:
     slug: 'the-timeline-code',
     tagline: 'Mapping Past, Present & Future',
     category: 'Timeline Analysis',
-    description: 'Learn how numerical cycles move through time. Build yearly, monthly, and daily timelines using ESS, COM, Personal Years, Calendar Years, compound markers, and historical event validation.',
+    description: 'Learn how the chart moves through time using Age, active Letters, Essence, Personal Year, Combiner, Calendar Year, monthly layers, Power Numbers in context, and historical validation.',
     thumbnail: '/src/assets/images/vc301_timeline_code_1788336681392.jpg',
     author: {
       id: 'user-creator',
       name: 'Prof. Vaughan',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      role: 'Main Creator / Headmaster',
+      role: 'Headmaster / Lead Instructor',
     },
     requiredTier: 'pro',
     requiredLevel: 3,
     createdAt: '2026-03-01',
-    updatedAt: '2026-08-30',
+    updatedAt: '2026-09-03',
     modules: [
-      {
-        id: 'mod-3-1',
-        title: 'Module 1: Macro Cycles & The Architecture of Chronological Vectors',
-        description: 'How numerical frequencies oscillate through time and the structural mechanics of personal cycles.',
-        lessons: [
-          {
-            id: 'les-3-1',
-            title: 'Teaching 1.1: Video Masterclass — The Cyclical Nature of Time',
-            description: 'Why time is non-linear in pattern recognition and how cycles repeat across 9-year waves.',
-            type: 'video',
-            durationMinutes: 22,
-            xpReward: 30,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-            contentMarkdown: `### The Chronological Architecture of the Vaughan Code
+      moduleBlock('mod-3-1', 'Module 1: Understanding the Time Map', 'Learn what the annual timeline chart represents.', [
+        lesson('les-3-1', 'Teaching 1.1: The Annual Time Map', 'Orient to Age, active Letters, Essence, Personal Year, Combiner, and Calendar Year.', 'video', 20, true,
+          `### The Annual Time Map
 
-In this advanced masterclass lesson, Professor Vaughan introduces:
-- **The 9-Year Macro Wave**: The structural rhythm of Initiation (1) through Culmination (9).
-- **Temporal Resonance**: How historical years echo identical numerical frequencies.
-- **Forensic Validation**: Proving cyclical accuracy against known autobiographical and historical milestones.`,
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-2',
-            title: 'Teaching 1.2: Audio Lecture — Past Validation as Proof of the System',
-            description: 'Audio coaching on validating a subject\'s past timeline before attempting forward projections.',
-            type: 'audio',
-            durationMinutes: 20,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-3',
-            title: 'Teaching 1.3: Blueprint Guide — The 9-Year Macro Cycle Overview',
-            description: 'Comprehensive 32-page illustrated handbook mapping cycle trajectories.',
-            type: 'pdf',
-            durationMinutes: 18,
-            xpReward: 25,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_Timeline_Macro_Cycles.pdf',
-            pdfFileSize: '5.1 MB',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-3-2',
-        title: 'Module 2: Personal Years & Universal Calendar Year Intersections',
-        description: 'Calculating the intersection of an individual\'s Personal Year with the macro Universal Year.',
-        lessons: [
-          {
-            id: 'les-3-4',
-            title: 'Teaching 2.1: Video Lecture — The Personal Year Formula',
-            description: 'Mathematical derivation of Personal Years from Month of Birth + Day of Birth + Target Year.',
-            type: 'video',
-            durationMinutes: 20,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-5',
-            title: 'Teaching 2.2: Research Paper — Dual-Cycle Intersections (Personal vs. Universal)',
-            description: 'Analyzing how a Personal Year 1 behaves inside a Universal Year 8 versus a Universal Year 4.',
-            type: 'article',
-            durationMinutes: 17,
-            xpReward: 20,
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-6',
-            title: 'Teaching 2.3: Audio Masterclass — The Personal Year Transition Phase',
-            description: 'Understanding the 3-month gradient transition between consecutive personal years.',
-            type: 'audio',
-            durationMinutes: 18,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-3-3',
-        title: 'Module 3: ESS (Essential Substructure) Calculation & Tracking',
-        description: 'Deriving the underlying tectonic baseline that anchors long-term multi-year trajectories.',
-        lessons: [
-          {
-            id: 'les-3-7',
-            title: 'Teaching 3.1: Video Masterclass — Deriving the ESS Marker',
-            description: 'Step-by-step mathematical calculation of the Essential Substructure (ESS).',
-            type: 'video',
-            durationMinutes: 24,
-            xpReward: 30,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-8',
-            title: 'Teaching 3.2: Blueprint Study — The ESS Tracking Sheet',
-            description: 'Standardized analytical worksheet to plot ESS progressions across decades.',
-            type: 'pdf',
-            durationMinutes: 16,
-            xpReward: 25,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_ESS_Tracking_Blueprint.pdf',
-            pdfFileSize: '4.2 MB',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-9',
-            title: 'Teaching 3.3: Research Case Study — ESS Shifts in Milestone Decades',
-            description: 'Historical validation of sudden shifts in life direction coinciding with ESS octave transitions.',
-            type: 'article',
-            durationMinutes: 15,
-            xpReward: 20,
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-3-4',
-        title: 'Module 4: COM (Compound Operative Matrix) Dynamics',
-        description: 'Tracking the active compound forces that determine specific event manifestations and turning points.',
-        lessons: [
-          {
-            id: 'les-3-10',
-            title: 'Teaching 4.1: Video Lecture — The COM Dynamic Force',
-            description: 'How the Compound Operative Matrix reveals catalyst events and acute turning points.',
-            type: 'video',
-            durationMinutes: 21,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-11',
-            title: 'Teaching 4.2: Audio Deep Dive — Differentiating ESS and COM in Real Time',
-            description: 'Audio coaching on separating the steady background climate (ESS) from the active weather (COM).',
-            type: 'audio',
-            durationMinutes: 19,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-12',
-            title: 'Teaching 4.3: Blueprint Handbook — The Complete COM Decryption Manual',
-            description: 'A 45-page comprehensive handbook classifying compound triggers 10 through 78.',
-            type: 'pdf',
-            durationMinutes: 22,
-            xpReward: 30,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_COM_Decryption_Manual.pdf',
-            pdfFileSize: '6.2 MB',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-3-5',
-        title: 'Module 5: Monthly Trajectories & Strategic Windows',
-        description: 'Breaking down yearly cycles into actionable monthly operating windows and tactical phases.',
-        lessons: [
-          {
-            id: 'les-3-13',
-            title: 'Teaching 5.1: Video Masterclass — Calculating Personal Months',
-            description: 'Deriving monthly harmonic waves and identifying optimum windows for launching, consolidating, or resting.',
-            type: 'video',
-            durationMinutes: 20,
-            xpReward: 25,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-14',
-            title: 'Teaching 5.2: Research Article — Monthly Peak Waves & Retraction Windows',
-            description: 'Predicting momentum peaks and strategic consolidation months within any active year.',
-            type: 'article',
-            durationMinutes: 14,
-            xpReward: 20,
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-15',
-            title: 'Teaching 5.3: Audio Masterclass — Monthly Calendar Calibration',
-            description: 'How to structure executive schedules, product launches, and contracts around monthly numbers.',
-            type: 'audio',
-            durationMinutes: 16,
-            xpReward: 20,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-3-6',
-        title: 'Module 6: Daily Timelines & Micro-Cycle Forecasting',
-        description: 'Micro-precision calculations: deriving Personal Days and tracking intra-week wave oscillations.',
-        lessons: [
-          {
-            id: 'les-3-16',
-            title: 'Teaching 6.1: Video Lecture — Personal Day Dynamics',
-            description: 'Calculating the exact day frequency and managing daily negotiation, presentation, and research rhythms.',
-            type: 'video',
-            durationMinutes: 18,
-            xpReward: 20,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-17',
-            title: 'Teaching 6.2: Blueprint Guide — Daily Tactical Matrix Template',
-            description: 'Downloadable printable and digital day-tracking grid for high-precision timeline validation.',
-            type: 'pdf',
-            durationMinutes: 12,
-            xpReward: 20,
-            pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            pdfFileName: 'VCU_Daily_Tactical_Matrix.pdf',
-            pdfFileSize: '2.8 MB',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-18',
-            title: 'Teaching 6.3: Research Exercise — Daily Micro-Cycle Retrospective Analysis',
-            description: 'Auditing 30 consecutive days of personal events against calculated Personal Day codes.',
-            type: 'article',
-            durationMinutes: 16,
-            xpReward: 20,
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-3-7',
-        title: 'Module 7: Historical Event Validation & Forensic Timeline Analysis',
-        description: 'Testing the mathematical fidelity of the Vaughan Code against verified geopolitical, scientific, and corporate history.',
-        lessons: [
-          {
-            id: 'les-3-19',
-            title: 'Teaching 7.1: Video Teardown — Forensic Timeline Case: Major Scientific Breakthroughs',
-            description: 'Analyzing the exact ESS, COM, and Personal Year markers active when revolutionary discoveries occurred.',
-            type: 'video',
-            durationMinutes: 26,
-            xpReward: 35,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-20',
-            title: 'Teaching 7.2: Research Paper — Historical Synchronization & Timeline Correlations',
-            description: 'Statistical validation of compound marker clustering during monumental historical turning points.',
-            type: 'article',
-            durationMinutes: 20,
-            xpReward: 25,
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-21',
-            title: 'Teaching 7.3: Audio Masterclass — The Ethics & Boundaries of Timeline Analysis',
-            description: 'Academic rigor, intellectual discipline, and avoiding sensationalism in chronological forecasting.',
-            type: 'audio',
-            durationMinutes: 18,
-            xpReward: 25,
-            audioUrl: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            isProOnly: true,
-          },
-        ],
-      },
-      {
-        id: 'mod-3-8',
-        title: 'Module 8: Multi-Year Predictive Synthesis & Level 3 Master Certification',
-        description: 'Constructing complete multi-decade timeline charts, synthesis lab, and earning the Master Analyst Credential.',
-        lessons: [
-          {
-            id: 'les-3-22',
-            title: 'Teaching 8.1: Master Synthesis Lab — Building a 10-Year Chronological Dossier',
-            description: 'Constructing an integrated yearly, monthly, and compound marker timeline for an executive research subject.',
-            type: 'article',
-            durationMinutes: 25,
-            xpReward: 35,
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-23',
-            title: 'Teaching 8.2: Video Capstone Lecture with Alexander Kotzev',
-            description: 'Closing address on system mastery, perpetual pattern observation, and future research directions.',
-            type: 'video',
-            durationMinutes: 20,
-            xpReward: 30,
-            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-            isProOnly: true,
-          },
-          {
-            id: 'les-3-24',
-            title: 'Teaching 8.3: VC 301 Master Certification Exam — The Timeline Code',
-            description: 'Comprehensive examination evaluating mastery of ESS, COM, Personal Years, and timeline validation. (+50 XP).',
-            type: 'quiz',
-            durationMinutes: 18,
-            xpReward: 50,
-            quiz: {
-              id: 'quiz-3',
-              title: 'VC 301 Master Certification: Advanced Timeline Analysis',
-              description: 'Demonstrate rigorous mastery of cyclical time structures, ESS/COM calculations, and historical event validation.',
-              passingScorePercentage: 80,
-              xpReward: 50,
-              questions: [
-                {
-                  id: 'q3-1',
-                  question: 'In timeline calculations, what distinguishes the Essential Substructure (ESS) from the Compound Operative Matrix (COM)?',
-                  options: [
-                    'The ESS represents the tectonic, multi-year foundational baseline, while the COM reflects the active, acute catalyst forces in play',
-                    'The ESS is only calculated for leap years, while the COM applies to standard years',
-                    'There is no mathematical difference between ESS and COM',
-                    'The ESS calculates vowels while the COM calculates consonants',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'The ESS provides the overarching macro climate and structural baseline, whereas the COM dictates immediate catalyst events and specific triggers.',
-                },
-                {
-                  id: 'q3-2',
-                  question: 'What is the correct mathematical formula to determine an individual\'s Personal Year for any given calendar year?',
-                  options: [
-                    'Month of Birth + Day of Birth + Target Calendar Year (reduced with compound retention)',
-                    'Full Birth Name + Current Age',
-                    'Current Year minus Birth Year only',
-                    'Day of Birth multiplied by 12',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'Personal Year is derived by combining the immutable Month of Birth and Day of Birth with the specific Target Calendar Year.',
-                },
-                {
-                  id: 'q3-3',
-                  question: 'Why is historical event validation considered mandatory before formulating any forward-looking timeline analysis in the Vaughan Code?',
-                  options: [
-                    'It empirically proves the mathematical synchronization and baseline calibration of the subject\'s recorded timeline before projecting forward',
-                    'To check if the subject\'s name is spelled correctly in the national archives',
-                    'Because older calendars were mathematically inverted',
-                    'To randomize future projection confidence intervals',
-                  ],
-                  correctAnswerIndex: 0,
-                  explanation: 'Historical validation grounds the system in empirical reality, ensuring the analyst has calibrated the subject\'s unique baseline against documented milestones.',
-                },
-              ],
-            },
-            isProOnly: true,
-          },
-        ],
-      },
+The annual chart is a moving view of the person through time.
+
+Key rows include:
+
+- **Age**
+- **Active Letters**
+- **Essence (ESS)** — the internal condition and how the person is feeling or experiencing themselves
+- **Personal Year (PY)** — the conditions and environment around the person
+- **Combiner (COM)** — Essence + Personal Year, used to study the resulting interaction and best response
+- **Calendar Year (CY)** — the broader year condition
+
+Do not rename ESS or COM with invented technical expansions.`),
+        lesson('les-3-2', 'Teaching 1.2: Why Letters Move Through Time', 'Study how active letters contribute to Essence as the chart advances.', 'audio', 18, true),
+        lesson('les-3-3', 'Teaching 1.3: Reading the Chart Before Interpreting It', 'Practice locating the correct year, age, letters, and governing rows before drawing a conclusion.', 'pdf', 16, true),
+      ]),
+      moduleBlock('mod-3-2', 'Module 2: Building the Annual Chart', 'Construct the annual chart carefully and preserve compounds.', [
+        lesson('les-3-4', 'Teaching 2.1: Positioning Age & Active Letters', 'Build the timeline columns and identify which letters are active in each period.', 'video', 20, true),
+        lesson('les-3-5', 'Teaching 2.2: Calculating Essence', 'Sum the active letters to form the annual Essence and preserve compound results.', 'article', 18, true),
+        lesson('les-3-6', 'Teaching 2.3: Personal Year, Combiner & Calendar Year', 'Place the Personal Year, calculate the Combiner, and keep the Calendar Year visible as broader context.', 'pdf', 20, true),
+      ]),
+      moduleBlock('mod-3-3', 'Module 3: Reading Essence', 'Study the internal experience shown by the annual Essence.', [
+        lesson('les-3-7', 'Teaching 3.1: Essence as Internal Condition', 'Interpret Essence as the internal condition rather than inventing a new technical meaning for ESS.', 'video', 20, true),
+        lesson('les-3-8', 'Teaching 3.2: Repeated Essence & Stability Runs', 'Notice repeated Essence values and compare them against known periods of life.', 'article', 16, true),
+        lesson('les-3-9', 'Teaching 3.3: Essence Validation Exercise', 'Use a known biography or personal timeline to test how Essence lines up with documented experience.', 'pdf', 18, true),
+      ]),
+      moduleBlock('mod-3-4', 'Module 4: Personal Years & the Combiner', 'Separate environmental conditions from the internal Essence, then study their interaction.', [
+        lesson('les-3-10', 'Teaching 4.1: Personal Year as Environmental Condition', 'Read the Personal Year as the conditions surrounding the person.', 'video', 20, true),
+        lesson('les-3-11', 'Teaching 4.2: The Combiner — A + B = C', 'Calculate Essence + Personal Year and study how the result informs response and action.', 'audio', 18, true),
+        lesson('les-3-12', 'Teaching 4.3: Annual Context Lab', 'Practice reading Essence, Personal Year, Combiner, and Calendar Year together.', 'article', 20, true),
+      ]),
+      moduleBlock('mod-3-5', 'Module 5: Monthly Progression', 'Move from the annual chart into PM, PME, MCOM, and CM.', [
+        lesson('les-3-13', 'Teaching 5.1: Personal Month (PM)', 'Calculate Personal Month from Personal Year + Calendar Month while preserving compounds.', 'video', 20, true),
+        lesson('les-3-14', 'Teaching 5.2: Personal Month Essence (PME)', 'Calculate PME from Personal Month + Annual Essence.', 'article', 18, true),
+        lesson('les-3-15', 'Teaching 5.3: Monthly Combiner (MCOM)', 'Calculate MCOM from Personal Month + Personal Month Essence and read it inside the annual conditions.', 'pdf', 20, true),
+      ]),
+      moduleBlock('mod-3-6', 'Module 6: Power Numbers Through Time', 'Recognize 11, 13 and 16 in annual and monthly positions without sensationalism.', [
+        lesson('les-3-16', 'Teaching 6.1: Power Numbers in Annual Positions', 'Identify where 11, 13, and 16 appear and name the position before interpreting them.', 'video', 20, true),
+        lesson('les-3-17', 'Teaching 6.2: Power Numbers in Monthly Positions', 'Practice distinguishing a Power Number in PM, PME, or MCOM from the annual governing conditions.', 'article', 18, true),
+        lesson('les-3-18', 'Teaching 6.3: Context Before Conclusion', 'Use surrounding rows, timing layers, and known facts instead of making a prediction from one number.', 'audio', 17, true),
+      ]),
+      moduleBlock('mod-3-7', 'Module 7: Historical Validation', 'Test the system against known past events before attempting forward analysis.', [
+        lesson('les-3-19', 'Teaching 7.1: Validate the Past First', 'Use documented events to test whether calculations and interpretations fit the known timeline.', 'video', 20, true),
+        lesson('les-3-20', 'Teaching 7.2: Case Study Worksheet', 'Record what happened, when it happened, which positions were active, and whether patterns repeat.', 'pdf', 22, true),
+        lesson('les-3-21', 'Teaching 7.3: Interpretation Discipline', 'Separate observation from assumption and avoid presenting one chart marker as certainty.', 'audio', 18, true),
+      ]),
+      moduleBlock('mod-3-8', 'Module 8: Timeline Synthesis & Master Certification', 'Bring annual and monthly layers together, with daily analysis reserved for advanced study.', [
+        lesson('les-3-22', 'Teaching 8.1: Full Timeline Synthesis Lab', 'Build a multi-year annual chart, select important years, and open the monthly layers for closer study.', 'article', 25, true),
+        lesson('les-3-23', 'Teaching 8.2: From Past Validation to Forward Questions', 'Use what has been validated to ask disciplined forward-looking questions without claiming certainty.', 'video', 20, true),
+        vc301Quiz,
+      ]),
     ],
   },
 ];
@@ -1362,59 +807,33 @@ export const INITIAL_POSTS: Post[] = [
     authorRole: 'creator',
     authorLevel: 9,
     category: 'Announcements',
-    title: '🏛️ Welcome to Vaughan Code University — Research Curriculum & System Roadmap',
-    content: `Welcome to Vaughan Code University.
+    title: 'Welcome to Vaughan Code University',
+    content: `Start with VC 101 even if you already know traditional numerology.
 
-As Founder and Headmaster, I established this academic research platform to decode the hidden architecture of human language, identity blueprints, and chronological time cycles.
+The learning path is intentional:
 
-Together with our Instructor **Alexander Kotzev** and research fellows, here is how to navigate your study of the Vaughan Code:
+1. Learn the number and letter language.
+2. Learn what each identity position governs.
+3. Learn how the chart moves through time.
+4. Test what you see against real, documented events.
 
-1. 📚 **Classroom & Teachings**: Begin with **VC 101: The Language Code**, where you will learn how letters convert into numerical structures and why compound preservation is foundational.
-2. 👤 **Human Blueprint (VC 201)**: Taught by Instructor Alexander Kotzev, decode Initial Impressions, Personality, Heart's Desire, Habits, Talents, and the Ultimate Goal.
-3. ⏳ **Timeline Code (VC 301)**: Master chronological cycles, building yearly, monthly, and daily timelines with ESS, COM, and historical validation.
-4. 🏆 **Academic Progression**: Earn XP through lesson completion (+20 XP), masterclass quizzes (+50 XP), research notes, and active scholarly discussions.
+The aim is not to hand you answers. It is to teach you how to calculate, compare, question, and see the patterns for yourself.
 
-Introduce yourself below with:
-- Which branch of research brings you to the Vaughan Code
-- A historical name or timeline you are eager to decode!
-
-Welcome to the pursuit of pattern intelligence.`,
+Learn the code. Test the patterns. See for yourself.`,
     isPinned: true,
-    likes: ['user-creator', 'user-instructor', 'user-pro', 'user-free', 'user-4', 'user-5'],
-    createdAt: '2026-08-28T14:30:00Z',
+    likes: ['user-instructor', 'user-moderator-carolyn', 'user-moderator-soarsa', 'user-moderator-julie', 'user-pro'],
+    createdAt: '2026-09-01T14:30:00Z',
     comments: [
       {
         id: 'c-1-1',
         authorId: 'user-instructor',
         authorName: 'Alexander Kotzev',
-        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        authorLevel: 7,
-        authorRole: 'creator',
-        content: 'Welcome all new scholars! Excited to guide you through the practical blueprint labs and live teardown seminars this semester.',
-        createdAt: '2026-08-28T14:55:00Z',
-        likes: ['user-creator', 'user-pro'],
-      },
-      {
-        id: 'c-1-2',
-        authorId: 'user-pro',
-        authorName: 'Jordan Lee',
         authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-        authorLevel: 4,
-        authorRole: 'member',
-        content: 'Honored to study under Headmaster Prof. Vaughan and Instructor Alexander Kotzev! Just finished VC 101 and the audio lecture on Compound Number Retention was extraordinary. Moving into VC 201 next!',
-        createdAt: '2026-08-28T15:10:00Z',
-        likes: ['user-creator', 'user-instructor', 'user-4'],
-      },
-      {
-        id: 'c-1-3',
-        authorId: 'user-free',
-        authorName: 'Sam Taylor',
-        authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-        authorLevel: 1,
-        authorRole: 'member',
-        content: 'Greetings Headmaster Vaughan! Enrolled to study linguistic frequency conversion. The downloadable PDF blueprints are wonderfully clear and academically grounded.',
-        createdAt: '2026-08-28T16:00:00Z',
-        likes: ['user-creator'],
+        authorLevel: 8,
+        authorRole: 'creator',
+        content: 'Begin with the calculations and keep your compound trails. If something does not make sense, bring the exact calculation into the community and we can work through it.',
+        createdAt: '2026-09-01T15:00:00Z',
+        likes: ['user-creator', 'user-pro'],
       },
     ],
   },
@@ -1422,122 +841,145 @@ Welcome to the pursuit of pattern intelligence.`,
     id: 'post-2',
     authorId: 'user-pro',
     authorName: 'Jordan Lee',
-    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
     authorRole: 'member',
     authorLevel: 4,
     category: 'Wins & Case Studies',
-    title: '📊 Case Study Win: Validating 15 Years of Executive Milestones using VC 301 Timeline Analysis',
-    content: `Wanted to share a fascinating research milestone with fellow VCU scholars!
+    title: 'I finally understood why position matters',
+    content: `I kept trying to interpret the same number the same way everywhere.
 
-Last week I applied the **VC 301 Timeline Code** methods (ESS and COM calculation models) against a 15-year historical dataset of corporate founder career pivots.
+VC 201 made it click that a 5 in Heart’s Desire is answering a different question than a 5 in the Day of Birth or Total Birth Date.
 
-Key findings:
-- 87% of major structural career transitions occurred precisely on Personal Year 1 or Personal Year 9 convergence windows.
-- Compound operative triggers (such as 16/7 and 19/1) aligned with documented organizational restructuring milestones down to the specific calendar month.
-- The dual-state compound preservation model formulated by Prof. Vaughan and taught by Instructor Alexander Kotzev made all the difference!
+That completely changed the way I read a chart.`,
+    likes: ['user-instructor', 'user-moderator-carolyn'],
+    createdAt: '2026-09-02T18:45:00Z',
+    comments: [],
+  },
+  {
+    id: 'post-3',
+    authorId: 'user-free',
+    authorName: 'Sam Taylor',
+    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    authorRole: 'member',
+    authorLevel: 1,
+    category: 'Questions & Help',
+    title: 'Question about preserving compound trails',
+    content: `If a Full Name gives me 38 → 11 → 2, should I record the complete 38/11/2 trail even though the final root is 2?
 
-If you haven't completed the certification exams in Classroom yet, dive into them!`,
-    likes: ['user-creator', 'user-instructor', 'user-4', 'user-5', 'user-6'],
-    createdAt: '2026-08-30T18:45:00Z',
+I think the answer is yes after VC 101, but I want to make sure I am writing the chart correctly.`,
+    likes: ['user-moderator-soarsa', 'user-pro'],
+    createdAt: '2026-09-03T09:15:00Z',
     comments: [
       {
-        id: 'c-2-1',
-        authorId: 'user-instructor',
-        authorName: 'Alexander Kotzev',
+        id: 'c-3-1',
+        authorId: 'user-moderator-soarsa',
+        authorName: 'Soarsa',
         authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        authorLevel: 7,
-        authorRole: 'creator',
-        content: 'Rigorous work Jordan! That is the standard of empirical validation we champion at Vaughan Code University. Publish your dataset notes in the Resource Share channel.',
-        createdAt: '2026-08-30T19:05:00Z',
-        likes: ['user-pro', 'user-creator'],
+        authorLevel: 5,
+        authorRole: 'moderator',
+        content: 'Yes. Keep the full 38 → 11 → 2 trail in your notes. The root is still 2, but the route should not be discarded.',
+        createdAt: '2026-09-03T09:40:00Z',
+        likes: ['user-free', 'user-instructor'],
       },
     ],
   },
   {
-    id: 'post-3',
-    authorId: 'user-4',
-    authorName: 'Elena Rostova',
+    id: 'post-4',
+    authorId: 'user-moderator-julie',
+    authorName: 'Julie',
     authorAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    authorRole: 'member',
+    authorRole: 'moderator',
     authorLevel: 5,
-    category: 'Questions & Help',
-    title: '💡 Research Question: Interpreting Vowel-Consonant Polarity in the Human Blueprint',
-    content: `When decoding an individual whose consonant outer persona evaluates to a structured 4/22 compound, but whose vowel Heart\'s Desire evaluates to an expansive 5 or 3, how do you best articulate the internal dialectic?
+    category: 'Action Guides',
+    title: 'Past timeline validation checklist',
+    content: `When you practice VC 301, write down the known event before you interpret the chart.
 
-The outer impression shows intense containment and methodical discipline, but the internal motive requires spontaneous pivot freedom.
+Ask:
 
-Has anyone analyzed similar blueprints in historical biographies?`,
+• What happened?
+• When did it happen?
+• What were the Essence, Personal Year and Combiner?
+• What changed when you open the monthly chart?
+• Is the pattern repeated anywhere else?
+
+Observation first. Interpretation second.`,
     likes: ['user-creator', 'user-instructor', 'user-pro'],
-    createdAt: '2026-08-31T09:15:00Z',
-    comments: [
-      {
-        id: 'c-3-1',
-        authorId: 'user-instructor',
-        authorName: 'Alexander Kotzev',
-        authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        authorLevel: 7,
-        authorRole: 'creator',
-        content: 'Excellent observation Elena. In VC 201 Module 2, we term this the "Architect-Explorer Dialectic". The 4 creates the disciplined operational framework inside of which the 5 seeks exploratory breakthrough.',
-        createdAt: '2026-08-31T09:40:00Z',
-        likes: ['user-4'],
-      },
-    ],
+    createdAt: '2026-09-03T12:00:00Z',
+    comments: [],
   },
 ];
 
 export const INITIAL_EVENTS: CommunityEvent[] = [
   {
     id: 'ev-1',
-    title: 'VCU Live Masterclass: Decoding Compound Matrices & Historical Timelines',
-    description: 'Interactive live research breakdown with Headmaster Prof. Vaughan & Instructor Alexander Kotzev. Live calculation teardown, historical case studies, and live audience blueprint analysis.',
+    title: 'Live Class: Building Your First Complete Chart',
+    description: 'A guided chart-building session covering accurate calculation, compound trails, and the main identity positions.',
     date: '2026-09-04',
     startTime: '11:00 AM',
     endTime: '12:30 PM',
-    timeZone: 'EST',
+    timeZone: 'MT',
     speaker: {
       name: 'Prof. Vaughan & Alexander Kotzev',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      title: 'Headmaster & Instructor',
+      title: 'Headmaster / Lead Instructor & Instructor / Moderator',
     },
     locationType: 'zoom',
-    meetingUrl: 'https://zoom.us/j/vcu-live-masterclass-stage',
+    meetingUrl: 'https://zoom.us/',
     requiredTier: 'free',
-    rsvpUserIds: ['user-creator', 'user-instructor', 'user-pro', 'user-4', 'user-5'],
+    rsvpUserIds: ['user-creator', 'user-instructor', 'user-moderator-carolyn', 'user-pro'],
   },
   {
     id: 'ev-2',
-    title: 'VIP Mastermind: Advanced ESS & COM Timeline Decryption Stage',
-    description: 'Exclusive private session for VIP subscribers with Instructor Alexander Kotzev. Bring complex biographical datasets, receive live forensic timeline audits and cycle forecasts.',
+    title: 'Chart Lab: First Name, Whole Name & Heart’s Desire',
+    description: 'Practice keeping personality and motivation layers separate before combining them into a full profile.',
     date: '2026-09-08',
-    startTime: '02:00 PM',
-    endTime: '03:30 PM',
-    timeZone: 'EST',
+    startTime: '2:00 PM',
+    endTime: '3:30 PM',
+    timeZone: 'MT',
     speaker: {
       name: 'Alexander Kotzev',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      title: 'Instructor',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      title: 'Instructor / Moderator',
     },
     locationType: 'meet',
-    meetingUrl: 'https://meet.google.com/vcu-vip-mastermind-stage',
-    requiredTier: 'vip',
-    rsvpUserIds: ['user-creator', 'user-instructor', 'user-5'],
+    meetingUrl: 'https://meet.google.com/',
+    requiredTier: 'pro',
+    rsvpUserIds: ['user-creator', 'user-instructor', 'user-pro'],
   },
   {
     id: 'ev-3',
-    title: 'Weekly VCU Research Symposium, Pattern Recognition Challenge & XP Awards',
-    description: 'Celebrate this week\'s top-ranked research scholars, award academic credentials, and breakout into peer decoding laboratories.',
+    title: 'Timeline Workshop: Essence, Personal Year & Combiner',
+    description: 'Build and interpret an annual time map, then compare it with known events from the subject’s past.',
     date: '2026-09-12',
-    startTime: '04:00 PM',
-    endTime: '05:00 PM',
-    timeZone: 'EST',
+    startTime: '4:00 PM',
+    endTime: '5:00 PM',
+    timeZone: 'MT',
     speaker: {
-      name: 'Elena Rostova & Jordan Lee',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-      title: 'VCU Lead Research Fellows',
+      name: 'Prof. Vaughan',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      title: 'Headmaster / Lead Instructor',
     },
     locationType: 'youtube',
-    meetingUrl: 'https://youtube.com/live/vcu-weekly-celebration',
+    meetingUrl: 'https://youtube.com/',
+    requiredTier: 'pro',
+    rsvpUserIds: ['user-creator', 'user-instructor', 'user-pro'],
+  },
+  {
+    id: 'ev-4',
+    title: 'Moderator Study Room: Student Chart Practice & Questions',
+    description: 'Bring your calculations, chart questions, and study notes for a community practice session with the moderator team.',
+    date: '2026-09-15',
+    startTime: '7:00 PM',
+    endTime: '8:00 PM',
+    timeZone: 'MT',
+    speaker: {
+      name: 'Carolyn, Soarsa & Julie',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+      title: 'Community Moderators',
+    },
+    locationType: 'zoom',
+    meetingUrl: 'https://zoom.us/',
     requiredTier: 'free',
-    rsvpUserIds: ['user-creator', 'user-pro', 'user-free', 'user-4', 'user-5', 'user-6'],
+    rsvpUserIds: ['user-moderator-carolyn', 'user-moderator-soarsa', 'user-moderator-julie', 'user-free'],
   },
 ];
