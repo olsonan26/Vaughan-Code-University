@@ -287,7 +287,7 @@ export const visualBriefAndPromptSchema = z
         message: 'chatgptPrompt must include an explicit avoid clause',
       }),
     altTextSuggestion: z.string(),
-    programmaticSpec: z.record(z.unknown()).optional(),
+    programmaticSpec: z.record(z.string(), z.unknown()).optional(),
     renderMode: z.enum(['CHATGPT_IMAGE', 'PROGRAMMATIC_DIAGRAM']).optional(),
     quality: z.enum(['STANDARD', 'PREMIUM', 'SIGNATURE']).optional(),
   })

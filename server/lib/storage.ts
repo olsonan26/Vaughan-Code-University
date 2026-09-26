@@ -86,9 +86,9 @@ export async function createSignedUploadUrl(
   expiresInSeconds: number = 300
 ): Promise<{ signedUrl: string; token: string; path: string }> {
   const supabase = getServiceClient();
-  const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path, {
-    expiresIn: expiresInSeconds,
-  });
+  const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path, { upsert: false });
+  // Supabase signed upload URLs have a fixed server-side lifetime (2h); expiresInSeconds is advisory.
+  void expiresInSeconds;
 
   if (error || !data) {
     throw new HttpError(

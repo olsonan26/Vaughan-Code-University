@@ -1,3 +1,7 @@
+import { useApp } from '../context/AppContext';
+import { useAuth } from '../features/auth/AuthProvider';
+import { resolvePermissionHelpers } from '../features/auth/logic';
+import type { PermissionHelpers } from '../features/auth/types';
 import type { User } from '../types';
 
 /**
@@ -24,4 +28,17 @@ export function canAccessAdmin(user: User | null | undefined): boolean {
 /** Community moderation (pin/remove posts). */
 export function canModerateCommunity(user: User | null | undefined): boolean {
   return user?.role === 'creator' || user?.role === 'moderator';
+}
+
+/**
+ * Preferred API. Supabase mode: server-provided roles + shared permission matrix.
+ * Demo mode: legacy local roles; Instructor Studio only in dev with VITE_ENABLE_DEV_PERSONAS=true.
+ */
+export function usePermissions(): PermissionHelpers {
+  const auth = useAuth();
+  const { currentUser } = useApp();
+  return resolvePermissionHelpers(auth.mode, auth.roles, currentUser, {
+    DEV: import.meta.env.DEV,
+    VITE_ENABLE_DEV_PERSONAS: import.meta.env.VITE_ENABLE_DEV_PERSONAS,
+  });
 }

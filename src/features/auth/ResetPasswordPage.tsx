@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, Sparkles, AlertCircle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
-import { useAuth } from './useAuthShim';
+import { useAuth } from './AuthProvider';
 import { useApp } from '../../context/AppContext';
 
 export const ResetPasswordPage: React.FC = () => {

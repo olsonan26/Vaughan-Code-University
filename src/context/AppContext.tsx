@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { useAuth } from '../features/auth/AuthProvider';
+import { deriveLegacyRole } from '../features/auth/logic';
 import { useLocation, useNavigate } from 'react-router';
 import { AppTab, canonicalPath, parseRoute, routes } from '../lib/routes';
 import confetti from 'canvas-confetti';
@@ -249,6 +251,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Normalise legacy or unknown URLs (e.g. "/", "/creator", "/leaderboard") to canonical paths.
   useEffect(() => {
+    // Auth landing pages (e.g. /auth/reset from a password-reset email) are not tabs.
+    if (location.pathname.startsWith('/auth/')) return;
     const canonical = canonicalPath(route);
     if (canonical !== location.pathname.replace(/\/+$/, '') ) {
       navigate(canonical + location.search + location.hash, { replace: true });
@@ -291,7 +295,60 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Derived current user and viewing user
-  const currentUser = users.find((u) => u.id === currentUserId) || null;
+  // --- Auth bridge -------------------------------------------------------------------------
+  // Supabase mode: identity comes ONLY from Supabase Auth + server roles. Local records keyed by
+  // the auth user id keep existing gamification/progress features working until they migrate.
+  // Demo mode (no backend configured): legacy local personas, clearly bannered.
+  const auth = useAuth();
+  const isSupabaseMode = auth.mode === 'supabase';
+  const authRolesKey = auth.roles.join(',');
+  useEffect(() => {
+    if (!isSupabaseMode || auth.status !== 'signed_in' || !auth.userId) return;
+    const id = auth.userId;
+    const email = auth.email ?? '';
+    const name = auth.profile?.displayName || email.split('@')[0] || 'Student';
+    const role = deriveLegacyRole(auth.roles);
+    setUsers((prev) => {
+      const existing = prev.find((u) => u.id === id);
+      const today = new Date().toISOString().split('T')[0];
+      const base: User = existing ?? {
+        id,
+        name,
+        email,
+        avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+        role,
+        subscriptionTier: 'free',
+        level: 1,
+        xp: 0,
+        streakDays: 1,
+        lastActiveDate: today,
+        bio: '',
+        joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        badges: [],
+        completedLessonIds: [],
+        passedTestIds: [],
+        activityHistory: [{ date: today, count: 1 }],
+      };
+      const merged: User = {
+        ...base,
+        name: auth.profile?.displayName || base.name,
+        email,
+        avatar: auth.profile?.avatarUrl || base.avatar,
+        bio: auth.profile?.bio ?? base.bio,
+        role,
+        subscriptionTier: auth.profile?.subscriptionTier ?? base.subscriptionTier,
+      };
+      return existing ? prev.map((u) => (u.id === id ? merged : u)) : [merged, ...prev];
+    });
+    setCurrentUserId(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupabaseMode, auth.status, auth.userId, auth.email, auth.profile, authRolesKey]);
+
+  const currentUser = isSupabaseMode
+    ? auth.status === 'signed_in' && auth.userId
+      ? users.find((u) => u.id === auth.userId) || null
+      : null
+    : users.find((u) => u.id === currentUserId) || null;
   const viewingUser = users.find((u) => u.id === viewingUserId) || currentUser || users[0] || null;
 
   // Persist states to local storage
@@ -512,6 +569,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const login = (email: string) => {
+    // Supabase mode signs in through useAuth() (AuthModal); this legacy path is demo-only.
+    if (isSupabaseMode) return false;
     const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (found) {
       setCurrentUserId(found.id);
@@ -532,6 +591,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const signup = (name: string, email: string) => {
+    if (isSupabaseMode) return;
     const newUser: User = {
       id: `user-${Date.now()}`,
       name,
@@ -562,6 +622,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const logout = () => {
+    if (isSupabaseMode) {
+      void auth.signOut();
+      return;
+    }
     setCurrentUserId('user-free');
     showToast({
       title: 'Logged Out',
@@ -571,6 +635,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const switchUser = (userId: string) => {
+    if (isSupabaseMode) {
+      console.warn('switchUser is disabled when real authentication is configured.');
+      return;
+    }
     const target = users.find((u) => u.id === userId);
     if (target) {
       setCurrentUserId(userId);

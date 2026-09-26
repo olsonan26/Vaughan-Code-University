@@ -8,7 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "dev:api": "tsx watch server/dev.ts",
+    "dev:all": "concurrently -n web,api \"bun run dev\" \"bun run dev:api\"",
+    "test": "vitest run",
+    "build:api-check": "esbuild 'api/[[...route]].ts' --bundle --platform=node --format=esm --packages=external --outfile=/tmp/vcu-api-check.mjs",
+    "db:test": "bash scripts/db/test.sh"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",

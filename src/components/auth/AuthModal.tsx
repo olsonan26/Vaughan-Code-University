@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Lock, Mail, User as UserIcon, Sparkles, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { useAuth } from '../../features/auth/useAuthShim';
+import { useAuth } from '../../features/auth/AuthProvider';
 
 type AuthTab = 'signin' | 'signup' | 'magic_link' | 'forgot_password';
 

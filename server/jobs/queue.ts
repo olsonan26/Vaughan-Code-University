@@ -89,3 +89,7 @@ export async function listJobs(
 ): Promise<{ items: JobDTO[]; nextCursor: string | null }> {
   return store.listJobs(filter);
 }
+
+export async function getStep(stepId: string, store: JobStore = getJobStore()): Promise<JobStepDTO | null> {
+  return store.getStep(stepId);
+}
