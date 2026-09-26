@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { JobWithSteps, JobDTO } from '../../shared/jobs/types';
+import type { JobWithSteps, JobDTO } from '../../../shared/jobs/types';
 import { getJob, listJobs, ListJobsFilter, ListJobsResponse } from './api';
 import { ApiError } from '../../services/api/client';
 

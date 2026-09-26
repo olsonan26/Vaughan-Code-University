@@ -1,5 +1,5 @@
 import { apiFetch } from '../../services/api/client';
-import type { JobDTO, JobStepDTO, JobWithSteps, JobState } from '../../shared/jobs/types';
+import type { JobDTO, JobStepDTO, JobWithSteps, JobState } from '../../../shared/jobs/types';
 
 export interface ListJobsFilter {
   state?: JobState | JobState[] | string;

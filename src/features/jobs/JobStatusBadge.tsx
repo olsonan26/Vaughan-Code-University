@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBadge } from '../../components/shared/StatusBadge';
-import type { JobState } from '../../shared/jobs/types';
+import type { JobState } from '../../../shared/jobs/types';
 
 export interface JobStatusBadgeProps {
   status: JobState | string;

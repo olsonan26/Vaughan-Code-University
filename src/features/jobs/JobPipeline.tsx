@@ -15,7 +15,7 @@ import {
   Ban,
   RefreshCw,
 } from 'lucide-react';
-import type { JobWithSteps, JobStepDTO, JobStepState, JobState } from '../../shared/jobs/types';
+import type { JobWithSteps, JobStepDTO, JobStepState, JobState } from '../../../shared/jobs/types';
 import { ProgressBar } from '../../components/shared/ProgressBar';
 import { Button } from '../../components/shared/Button';
 import { JobStatusBadge } from './JobStatusBadge';

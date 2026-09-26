@@ -1,6 +1,7 @@
 import type { ZodType } from 'zod';
 
-export type AiTier = 'LIGHT' | 'STANDARD' | 'HIGH' | 'MAX';
+import type { AiTier } from '../tiers.js';
+export type { AiTier };
 
 /**
  * Every AI skill exports PURE builders: build<Skill>Request(input) -> SkillRequest<Output>.
