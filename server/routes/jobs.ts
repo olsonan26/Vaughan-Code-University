@@ -13,7 +13,7 @@ import {
   retryStep,
   getJobStore,
 } from '../jobs/queue.js';
-import { runOnce } from '../jobs/worker.ts';
+import { runOnce } from '../jobs/worker.js';
 import { serverEnv } from '../env.js';
 import type { JobState } from '../../shared/jobs/types.js';
 
