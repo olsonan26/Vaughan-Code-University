@@ -12,6 +12,7 @@ import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
 import { ApiError } from '../../services/api/client';
 import { useStudioPermissions } from '../instructor/permissions';
 import { SourceStateBadge, AuthorityBadge } from './badges';
+import { PageReadsPanel } from './PageReadsPanel';
 import { knowledgeApi, isBusy, formatBytes, AUTHORITY_LABEL, STATE_LABEL, type KnowledgeSource, type SourceChunk, type Visibility } from './api';
 
 type Detail = Awaited<ReturnType<typeof knowledgeApi.get>>;
@@ -26,7 +27,7 @@ export const SourceDetailPage: React.FC = () => {
   const { can } = useStudioPermissions();
   const [detail, setDetail] = useState<Detail | null>(null);
   const [error, setError] = useState<Error | null>(null);
-  const [tab, setTab] = useState('concepts');
+  const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'concepts');
 
   const load = useCallback(async () => {
     try {
@@ -51,16 +52,17 @@ export const SourceDetailPage: React.FC = () => {
   }
   if (!detail) return <LoadingState label="Loading source…" />;
   const s = detail.source;
+  const pagesToReview = Number(s.metadata?.pagesToReview ?? 0);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={s.title}
         breadcrumbs={[{ label: 'Knowledge Vault', to: '/instructor/knowledge' }, { label: s.title }]}
-        actions={<div className="flex items-center gap-2">{s.processing_state === 'ready' && <button onClick={() => window.dispatchEvent(new CustomEvent('kate:open', { detail: { sourceIds: [s.id], checklist: true } }))} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">Ask Kate what to build</button>}<AuthorityBadge level={s.authority_level} /><SourceStateBadge state={s.processing_state} /></div>}
+        actions={<div className="flex items-center gap-2">{(s.processing_state === 'ready' || s.processing_state === 'needs_review') && <button onClick={() => window.dispatchEvent(new CustomEvent('kate:open', { detail: { sourceIds: [s.id], checklist: true } }))} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">Ask Kate what to build</button>}<AuthorityBadge level={s.authority_level} /><SourceStateBadge state={s.processing_state} /></div>}
       />
 
-      <ProcessingPanel detail={detail} onReprocess={async () => { await knowledgeApi.reprocess(s.id); load(); }} />
+      <ProcessingPanel detail={detail} onReprocess={async () => { await knowledgeApi.reprocess(s.id); load(); }} onReviewPages={() => setTab('eyes')} />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
@@ -68,6 +70,7 @@ export const SourceDetailPage: React.FC = () => {
             tabs={[
               { id: 'concepts', label: 'Concepts', badge: detail.concepts.length || undefined },
               { id: 'text', label: 'Extracted text' },
+              { id: 'eyes', label: 'Kate’s eyes', badge: pagesToReview || undefined },
               { id: 'conflicts', label: 'Conflicts', badge: detail.conflicts.filter((c) => c.status === 'open').length || undefined },
             ]}
             activeTabId={tab}
@@ -75,6 +78,7 @@ export const SourceDetailPage: React.FC = () => {
           />
           {tab === 'concepts' && <ConceptsList detail={detail} />}
           {tab === 'text' && <ChunksList sourceId={s.id} ready={!busy} />}
+          {tab === 'eyes' && <PageReadsPanel sourceId={s.id} canEdit={can('knowledge.upload')} onApplied={load} />}
           {tab === 'conflicts' && <ConflictsList detail={detail} onChange={load} />}
         </div>
         <MetadataPanel
@@ -88,11 +92,23 @@ export const SourceDetailPage: React.FC = () => {
   );
 };
 
-const ProcessingPanel: React.FC<{ detail: Detail; onReprocess: () => Promise<void> }> = ({ detail, onReprocess }) => {
+const ProcessingPanel: React.FC<{ detail: Detail; onReprocess: () => Promise<void>; onReviewPages: () => void }> = ({ detail, onReprocess, onReviewPages }) => {
   const s = detail.source;
   const job = detail.latestJob;
   const [working, setWorking] = useState(false);
   if (s.processing_state === 'ready' && !job?.error) return null;
+  const pagesToReview = Number(s.metadata?.pagesToReview ?? 0);
+  if (s.processing_state === 'needs_review' && pagesToReview > 0) {
+    return (
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Kate read {pagesToReview} page{pagesToReview === 1 ? '' : 's'} with pictures. Please check them.</p>
+          <p className="text-xs text-slate-600 mt-0.5">The text from the file is ready to use now. Picture content is only used after you verify it.</p>
+        </div>
+        <Button size="sm" onClick={onReviewPages}>Review pages</Button>
+      </section>
+    );
+  }
   const failed = s.processing_state === 'failed';
   return (
     <section className={`rounded-2xl border p-5 ${failed ? 'border-rose-200 bg-rose-50' : 'border-indigo-100 bg-indigo-50/60'}`}>

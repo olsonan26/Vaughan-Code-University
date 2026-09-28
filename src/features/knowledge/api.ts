@@ -30,6 +30,7 @@ export interface KnowledgeSource {
   updated_at: string;
   processed_at: string | null;
   archived_at: string | null;
+  metadata?: { pagesToReview?: number; visionPages?: number; [k: string]: unknown } | null;
 }
 
 export interface ConceptEvidence {
@@ -70,10 +71,24 @@ export const AUTHORITY_LABEL: Record<number, string> = {
   5: 'Canonical', 4: 'Approved curriculum', 3: 'Trusted research', 2: 'Working notes', 1: 'External / unverified',
 };
 
-export const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md', '.markdown', '.csv'];
+export const ACCEPTED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md', '.markdown', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.vtt', '.srt'];
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
+export type PageReadStatus = 'pending' | 'agreed' | 'needs_review' | 'verified' | 'excluded' | 'error';
+export interface VisionReadResult { text: string; visuals: { kind: string; description: string }[]; uncertain: string[]; legible: boolean }
+export interface PageRead {
+  id: string; page_number: number; reason: string; image_url: string | null;
+  primary_model: string | null; primary_result: VisionReadResult | null; check_model: string | null; check_result: VisionReadResult | null;
+  agreement: number | null; differences: string[]; status: PageReadStatus; final_text: string | null;
+  included_in_knowledge: boolean; error: string | null; verified_at: string | null;
+}
+
 export const knowledgeApi = {
+  pages: (id: string) => apiFetch<{ items: PageRead[]; counts: Partial<Record<PageReadStatus, number>>; pendingRebuild: number }>(`/knowledge/sources/${id}/pages`),
+  reviewPage: (id: string, page: number, body: { action: 'verify' | 'exclude' | 'reopen'; finalText?: string }) =>
+    apiFetch<{ page: PageRead }>(`/knowledge/sources/${id}/pages/${page}`, { method: 'PATCH', json: body }),
+  verifyAgreed: (id: string) => apiFetch<{ verified: number }>(`/knowledge/sources/${id}/pages/verify-agreed`, { method: 'POST' }),
+  applyPages: (id: string) => apiFetch<{ job: { id: string } }>(`/knowledge/sources/${id}/pages/apply`, { method: 'POST' }),
   list: (params: { q?: string; state?: string } = {}, signal?: AbortSignal) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
     return apiFetch<{ items: KnowledgeSource[]; total: number }>(`/knowledge/sources${qs ? `?${qs}` : ''}`, { signal });
@@ -112,11 +127,19 @@ export async function sha256Hex(file: File): Promise<string | undefined> {
 }
 
 /** PUT the file straight to storage via the signed URL (bypasses the 4.5 MB serverless body limit), with progress. */
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: 'application/pdf', txt: 'text/plain', md: 'text/markdown', markdown: 'text/markdown', csv: 'text/csv',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  webp: 'image/webp', vtt: 'text/vtt', srt: 'application/x-subrip',
+};
+/** Browsers often report '' for .vtt/.srt/.md; storage only accepts known types, so fill it in from the extension. */
+export const mimeFor = (file: File) => file.type || MIME_BY_EXT[(file.name.split('.').pop() ?? '').toLowerCase()] || 'application/octet-stream';
+
 export function putToSignedUrl(signedUrl: string, file: File, onProgress: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', signedUrl);
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('Content-Type', mimeFor(file));
     xhr.setRequestHeader('x-upsert', 'false');
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Storage rejected the upload (HTTP ${xhr.status}): ${xhr.responseText.slice(0, 200)}`)));

@@ -12,6 +12,8 @@ import type { EvidenceChunk, LockedKnowledge } from '../ai/skills/types.js';
 import { getEmbeddingProvider } from '../ai/embeddings/index.js';
 import { detectSourceType, extractText, type SourceType } from './extract.js';
 import { chunkPages } from './chunk.js';
+import { cleanCaptions } from './extract.js';
+import { markIncluded, pagesAwaitingReview, planVision, verifiedBlock, verifiedReadings, visionStep, visionStepKey } from './vision.js';
 
 export const PAGE_BREAK = '\f';
 export const ANALYZE_BATCH_SIZE = 6;
@@ -62,22 +64,38 @@ export async function extractStep(ctx: StepHandlerContext, db: Db = getServiceCl
     const src = await loadSource(db, sourceId);
     let pages: { pageNumber: number | null; text: string }[];
     let pageCount: number | null = null;
+    let vision: { pageNumber: number; mode: string }[] = [];
+    let visionPlanned = 0;
     if (src.file_path) {
       const { data, error } = await db.storage.from(KNOWLEDGE_BUCKET).download(src.file_path);
       if (error || !data) throw new Error(`The uploaded file could not be read from storage: ${error?.message ?? 'missing'}`);
       const type = (detectSourceType(src.original_filename ?? src.file_path, src.mime_type) ?? 'txt') as SourceType;
-      const r = await extractText(new Uint8Array(await data.arrayBuffer()), type);
+      const bytes = new Uint8Array(await data.arrayBuffer());
+      const r = await extractText(bytes, type, { allowEmpty: true });
       pages = r.pages;
       pageCount = r.pageCount;
+      const planned = await planVision(db, src, type, bytes, pages.map((p) => p.text));
+      visionPlanned = planned.plan.length;
+      vision = planned.toRead;
+      if (r.charCount === 0 && visionPlanned === 0) {
+        throw Object.assign(new Error('No readable text or images were found in this file.'), { retryable: false, status: 422 });
+      }
     } else if (src.raw_content) {
-      pages = [{ pageNumber: null, text: String(src.raw_content) }];
+      const raw = String(src.raw_content);
+      pages = [{ pageNumber: null, text: src.type === 'transcript' && raw.includes('-->') ? cleanCaptions(raw) : raw }];
     } else {
       throw Object.assign(new Error('Source has neither a file nor text content.'), { retryable: false });
     }
+    if (vision.length) {
+      await ctx.deps.db.addSteps(ctx.job.id, vision.map((v, i) => ({
+        key: visionStepKey(v.pageNumber), label: `Read images on page ${v.pageNumber}`, seq: 1000 + i, // display after analysis; runs in parallel with chunking
+        dependsOn: ['extract'], input: { pageNumber: v.pageNumber, mode: v.mode },
+      })));
+    }
     const hasPages = pages.some((p) => p.pageNumber !== null);
     const raw = pages.map((p) => p.text).join(PAGE_BREAK);
-    await setState(db, sourceId, 'extracted', { raw_content: raw, page_count: pageCount, metadata: { ...(src.metadata ?? {}), paged: hasPages } });
-    return { output: { pageCount, charCount: raw.length } };
+    await setState(db, sourceId, 'extracted', { raw_content: raw, page_count: pageCount, metadata: { ...(src.metadata ?? {}), paged: hasPages, visionSteps: vision.map((v) => visionStepKey(v.pageNumber)), visionPages: visionPlanned } });
+    return { output: { pageCount, charCount: raw.length, visionPages: visionPlanned, visionToRead: vision.length } };
   });
 }
 
@@ -87,8 +105,14 @@ export async function chunkStep(ctx: StepHandlerContext, db: Db = getServiceClie
     await setState(db, sourceId, 'chunking');
     const src = await loadSource(db, sourceId);
     const paged = Boolean(src.metadata?.paged);
-    const pages = String(src.raw_content ?? '').split(PAGE_BREAK).map((text, i) => ({ pageNumber: paged ? i + 1 : null, text }));
-    const chunks = chunkPages(pages);
+    const verified = await verifiedReadings(db, sourceId);
+    const pages = String(src.raw_content ?? '').split(PAGE_BREAK).map((text, i) => {
+      const n = paged ? i + 1 : 1;
+      const extra = verified.get(n);
+      return { pageNumber: paged ? i + 1 : null, text: extra ? `${text}${verifiedBlock(n, extra)}`.trim() : text };
+    });
+    const chunks = chunkPages(pages.filter((p) => p.text.trim().length > 0));
+    await markIncluded(db, sourceId, [...verified.keys()]);
     // idempotent: replace this source's chunks
     const del = await db.from('source_chunks').delete().eq('source_id', sourceId);
     if (del.error) throw new Error(`Could not clear old chunks: ${del.error.message}`);
@@ -120,7 +144,7 @@ export async function chunkStep(ctx: StepHandlerContext, db: Db = getServiceClie
         dependsOn: ['chunk'],
         input: { fromIndex: i * ANALYZE_BATCH_SIZE, toIndex: (i + 1) * ANALYZE_BATCH_SIZE - 1 },
       })),
-      { key: 'finalize', label: 'Build concept graph', seq: 10 + batches, dependsOn: ['embed', ...analyzeKeys] },
+      { key: 'finalize', label: 'Build concept graph', seq: 5000, dependsOn: ['embed', ...analyzeKeys, ...((src.metadata?.visionSteps ?? []) as string[])] },
     ]);
     return { output: { chunkCount: chunks.length, analysisBatches: batches } };
   });
@@ -264,9 +288,10 @@ export async function finalizeStep(ctx: StepHandlerContext, db: Db = getServiceC
     }
     const { count: conceptCount } = await db.from('concept_sources').select('concept_id', { count: 'exact', head: true }).eq('source_id', sourceId);
     const { count: conflicts } = await db.from('source_conflicts').select('id', { count: 'exact', head: true }).eq('source_a_id', sourceId).eq('status', 'open');
-    const state = (conflicts ?? 0) > 0 ? 'needs_review' : 'ready';
-    await setState(db, sourceId, state, { concept_count: conceptCount ?? 0, processed_at: new Date().toISOString(), processing_error: null });
-    return { output: { state, concepts: conceptCount ?? 0, relationshipsLinked: linked, openConflicts: conflicts ?? 0 } };
+    const pagesToReview = await pagesAwaitingReview(db, sourceId);
+    const state = (conflicts ?? 0) > 0 || pagesToReview > 0 ? 'needs_review' : 'ready';
+    await setState(db, sourceId, state, { concept_count: conceptCount ?? 0, processed_at: new Date().toISOString(), processing_error: null, metadata: { ...(src.metadata ?? {}), pagesToReview } });
+    return { output: { state, concepts: conceptCount ?? 0, relationshipsLinked: linked, openConflicts: conflicts ?? 0, pagesToReview } };
   });
 }
 
@@ -275,6 +300,7 @@ export function registerKnowledgeHandlers() {
   registerStepHandler('source.process', 'chunk', (ctx) => chunkStep(ctx));
   registerStepHandler('source.process', 'embed', (ctx) => embedStep(ctx));
   registerStepHandler('source.process', /^analyze:\d+$/, (ctx) => analyzeStep(ctx));
+  registerStepHandler('source.process', /^vision:\d+$/, (ctx) => visionStep(ctx, getServiceClient()));
   registerStepHandler('source.process', 'finalize', (ctx) => finalizeStep(ctx));
 }
 

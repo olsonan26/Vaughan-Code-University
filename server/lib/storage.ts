@@ -18,8 +18,13 @@ export const BUCKET_RULES: Record<string, BucketRule> = {
       'application/csv',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'text/vtt',
+      'application/x-subrip',
     ],
-    allowedExtensions: ['.pdf', '.txt', '.md', '.csv', '.docx', '.doc'],
+    allowedExtensions: ['.pdf', '.txt', '.md', '.csv', '.docx', '.doc', '.png', '.jpg', '.jpeg', '.webp', '.vtt', '.srt'],
   },
   'course-media': {
     maxSizeBytes: 15 * 1024 * 1024, // 15MB

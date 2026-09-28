@@ -14,7 +14,7 @@ import { useStudioPermissions } from '../instructor/permissions';
 import { PasteTextDialog } from './PasteTextDialog';
 import { SourceStateBadge, AuthorityBadge } from './badges';
 import {
-  knowledgeApi, isBusy, sha256Hex, putToSignedUrl, formatBytes, ACCEPTED_EXTENSIONS, MAX_UPLOAD_BYTES, STATE_LABEL,
+  knowledgeApi, isBusy, sha256Hex, putToSignedUrl, mimeFor, formatBytes, ACCEPTED_EXTENSIONS, MAX_UPLOAD_BYTES, STATE_LABEL,
   type KnowledgeSource, type ConceptRow,
 } from './api';
 
@@ -78,7 +78,7 @@ const SourcesTab: React.FC<{ canUpload: boolean; autoOpenUpload: boolean }> = ({
     setItem(file.name, { status: 'uploading', progress: 0, error: undefined });
     try {
       const checksumSha256 = await sha256Hex(file);
-      const slot = await knowledgeApi.createUpload({ filename: file.name, mimeType: file.type, sizeBytes: file.size, checksumSha256 });
+      const slot = await knowledgeApi.createUpload({ filename: file.name, mimeType: mimeFor(file), sizeBytes: file.size, checksumSha256 });
       await putToSignedUrl(slot.upload.signedUrl, file, (p) => setItem(file.name, { progress: p }));
       setItem(file.name, { status: 'processing', progress: 100 });
       await knowledgeApi.complete(slot.sourceId);
@@ -103,7 +103,7 @@ const SourcesTab: React.FC<{ canUpload: boolean; autoOpenUpload: boolean }> = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Add knowledge</h2>
-              <p className="text-xs text-slate-500">PDF, Word (.docx), TXT, Markdown or CSV up to 50 MB. Scanned PDFs without a text layer can’t be read yet.</p>
+              <p className="text-xs text-slate-500">PDF, Word (.docx), TXT, Markdown, CSV, images (PNG/JPG/WEBP) or captions (VTT/SRT) up to 50 MB. Kate reads pictures, charts and scanned pages; you verify what she read before it is used.</p>
             </div>
             <Button variant="secondary" size="sm" leftIcon={<ClipboardPaste className="w-4 h-4" />} onClick={() => setPasteOpen(true)}>
               Paste text or transcript

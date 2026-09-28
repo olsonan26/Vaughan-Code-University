@@ -18,7 +18,7 @@ knowledgeRoutes.use('*', requireAuth(), requirePermission('studio.access'));
 
 const db = () => getServiceClient();
 const PUBLIC_COLUMNS =
-  'id, organization_id, title, type, original_filename, file_size_bytes, mime_type, processing_state, processing_error, authority_level, visibility, author, description, publication_date, source_version_label, page_count, chunk_count, concept_count, checksum_sha256, version, created_by, created_at, updated_at, processed_at, archived_at';
+  'id, organization_id, title, type, original_filename, file_size_bytes, mime_type, processing_state, processing_error, authority_level, visibility, author, description, publication_date, source_version_label, page_count, chunk_count, concept_count, checksum_sha256, version, created_by, created_at, updated_at, processed_at, archived_at, metadata';
 
 async function getSource(id: string) {
   const { data, error } = await db().from('knowledge_sources').select(PUBLIC_COLUMNS).eq('id', id).maybeSingle();
@@ -42,6 +42,12 @@ async function startProcessing(c: any, source: { id: string; organization_id: st
   return job;
 }
 
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: 'application/pdf', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', vtt: 'text/vtt', srt: 'application/x-subrip',
+};
+
 /** 1) Request an upload slot: validates type/size, creates the source record, returns a signed upload URL. */
 const uploadSchema = z.object({
   filename: z.string().min(1).max(255),
@@ -55,9 +61,9 @@ knowledgeRoutes.post('/uploads', requirePermission('knowledge.upload'), async (c
   const body = await parseBody(c, uploadSchema);
   const type = detectSourceType(body.filename, body.mimeType);
   if (!type) {
-    throw new HttpError(400, 'invalid_file', `${body.filename} is not a supported type. Allowed: PDF, DOCX, TXT, MD, CSV.`);
+    throw new HttpError(400, 'invalid_file', `${body.filename} is not a supported type. Allowed: PDF, DOCX, TXT, MD, CSV, PNG, JPG, WEBP, VTT, SRT.`);
   }
-  const mime = body.mimeType || BUCKET_RULES[KNOWLEDGE_BUCKET]?.allowedMimeTypes?.[0] || 'application/octet-stream';
+  const mime = body.mimeType || MIME_BY_EXT[body.filename.split('.').pop()?.toLowerCase() ?? ''] || 'application/octet-stream';
   validateStorageUpload(KNOWLEDGE_BUCKET, mime, body.sizeBytes, body.filename);
 
   if (body.checksumSha256) {
@@ -345,4 +351,83 @@ knowledgeRoutes.patch('/conflicts/:id', async (c) => {
   }
   await logActivity(c, { action: 'knowledge.conflict_' + body.status, entityType: 'source_conflict', entityId: (cur as any).id });
   return c.json({ ok: true });
+});
+
+/* ---------------- Kate's eyes: page readings the instructor must verify ---------------- */
+
+const PAGE_READ_COLUMNS = 'id, page_number, reason, image_path, primary_model, primary_result, check_model, check_result, agreement, differences, status, final_text, included_in_knowledge, error, verified_at, updated_at';
+
+/** Every page Kate looked at, with a short-lived link to the page image so the instructor can compare. */
+knowledgeRoutes.get('/sources/:id/pages', async (c) => {
+  const auth = c.get('auth');
+  const src = await getSource(c.req.param('id'));
+  assertCanRead(auth, src);
+  const { data, error } = await db().from('source_page_reads').select(PAGE_READ_COLUMNS).eq('source_id', src!.id).order('page_number');
+  if (error) throw new HttpError(500, 'db_error', error.message);
+  const rows = data ?? [];
+  const paths = rows.map((r: any) => r.image_path).filter(Boolean) as string[];
+  const urls = new Map<string, string>();
+  if (paths.length) {
+    const { data: signed } = await db().storage.from(KNOWLEDGE_BUCKET).createSignedUrls(paths, 3600);
+    for (const s of signed ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+  }
+  const counts: Record<string, number> = {};
+  for (const r of rows as any[]) counts[r.status] = (counts[r.status] ?? 0) + 1;
+  const toAdd = (rows as any[]).filter((r) => r.status === 'verified' && !r.included_in_knowledge).length;
+  const toRemove = (rows as any[]).filter((r) => r.status !== 'verified' && r.included_in_knowledge).length;
+  return c.json({ items: rows.map((r: any) => ({ ...r, image_url: r.image_path ? urls.get(r.image_path) ?? null : null })), counts, pendingRebuild: toAdd + toRemove });
+});
+
+const pageReviewSchema = z.object({
+  action: z.enum(['verify', 'exclude', 'reopen']),
+  finalText: z.string().max(60000).optional(),
+});
+/** Instructor decision on one page. Only 'verify' lets the text become knowledge (after a rebuild). */
+knowledgeRoutes.patch('/sources/:id/pages/:page', async (c) => {
+  const auth = c.get('auth');
+  const body = await parseBody(c, pageReviewSchema);
+  const src = await getSource(c.req.param('id'));
+  assertCanEdit(auth, src);
+  const page = Number(c.req.param('page'));
+  if (!Number.isInteger(page) || page < 1) throw new HttpError(400, 'invalid_page', 'Page must be a positive number.');
+  const { data: cur } = await db().from('source_page_reads').select('id, status, final_text').eq('source_id', src!.id).eq('page_number', page).maybeSingle();
+  if (!cur) throw new HttpError(404, 'not_found', `Kate has no reading for page ${page}.`);
+  const now = new Date().toISOString();
+  const update: Record<string, unknown> = { updated_at: now };
+  if (body.action === 'verify') {
+    const text = (body.finalText ?? (cur as any).final_text ?? '').trim();
+    if (!text) throw new HttpError(400, 'empty_text', 'There is no text to verify. Type what the page says, or exclude the page.');
+    Object.assign(update, { status: 'verified', final_text: text, verified_by: auth.userId, verified_at: now, error: null });
+  } else if (body.action === 'exclude') {
+    Object.assign(update, { status: 'excluded', verified_by: auth.userId, verified_at: now });
+  } else {
+    Object.assign(update, { status: 'needs_review', verified_by: null, verified_at: null });
+    if (body.finalText !== undefined) update.final_text = body.finalText;
+  }
+  const { data, error } = await db().from('source_page_reads').update(update).eq('id', (cur as any).id).select(PAGE_READ_COLUMNS).single();
+  if (error) throw new HttpError(500, 'db_error', error.message);
+  await logActivity(c, { action: `knowledge.page_${body.action}`, entityType: 'knowledge_source', entityId: src!.id, metadata: { page, edited: body.finalText !== undefined && body.finalText.trim() !== ((cur as any).final_text ?? '').trim() } });
+  return c.json({ page: data });
+});
+
+/** Verify every page where both readers agreed exactly (the instructor still chooses to do this). */
+knowledgeRoutes.post('/sources/:id/pages/verify-agreed', async (c) => {
+  const auth = c.get('auth');
+  const src = await getSource(c.req.param('id'));
+  assertCanEdit(auth, src);
+  const now = new Date().toISOString();
+  const { data, error } = await db().from('source_page_reads').update({ status: 'verified', verified_by: auth.userId, verified_at: now, updated_at: now })
+    .eq('source_id', src!.id).eq('status', 'agreed').not('final_text', 'is', null).select('page_number');
+  if (error) throw new HttpError(500, 'db_error', error.message);
+  await logActivity(c, { action: 'knowledge.pages_verified_agreed', entityType: 'knowledge_source', entityId: src!.id, metadata: { pages: (data ?? []).map((r: any) => r.page_number) } });
+  return c.json({ verified: (data ?? []).length });
+});
+
+/** Rebuild the source's knowledge so verified page text is included (and un-verified text removed). */
+knowledgeRoutes.post('/sources/:id/pages/apply', requirePermission('knowledge.upload'), async (c) => {
+  const auth = c.get('auth');
+  const src = await getSource(c.req.param('id'));
+  assertCanEdit(auth, src);
+  const job = await startProcessing(c, src as any, 'verified_pages');
+  return c.json({ job });
 });
