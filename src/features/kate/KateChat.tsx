@@ -51,7 +51,7 @@ export const KateChat: React.FC<{ initialContext?: KateContext; initialPrompt?: 
 
   useEffect(() => {
     if (!threadId) { setMessages([]); return; }
-    getThread(threadId).then((r) => setMessages(r.messages)).catch(() => { localStorage.removeItem(THREAD_KEY); setThreadId(null); });
+    getThread(threadId).then((r) => setMessages((cur) => (cur.some((x) => x.id === 'tmp') ? cur : r.messages))).catch(() => { localStorage.removeItem(THREAD_KEY); setThreadId(null); });
   }, [threadId]);
 
   const runChecklist = useCallback(async (ids: string[]) => {
@@ -76,8 +76,9 @@ export const KateChat: React.FC<{ initialContext?: KateContext; initialPrompt?: 
     setMessages((m) => [...m, optimistic]); setDraft('');
     try {
       const t = await ensureThread();
-      const r = await sendMessage(t, { content, context: { ...ctx, ...(extra ?? {}) } as any });
-      setMessages((m) => [...m.filter((x) => x.id !== 'tmp'), ...r.messages]);
+      await sendMessage(t, { content, context: { ...ctx, ...(extra ?? {}) } as any });
+      // Server is the source of truth: reload the thread instead of appending (avoids duplicates).
+      setMessages((await getThread(t)).messages);
     } catch (e: any) {
       setMessages((m) => m.filter((x) => x.id !== 'tmp')); setDraft(content);
       setError(e?.message ?? 'Kate could not answer');
