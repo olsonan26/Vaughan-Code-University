@@ -4,13 +4,16 @@ Kate is one assistant to the instructor, backed by a team of models via OpenRout
 
 | Role | Model (default) | Why |
 |---|---|---|
-| Kate (chat, planning, tool use) | deepseek/deepseek-v4.1-flash | cheap, 1M context, reads images |
+| Kate (chat, planning, tool use) | deepseek/deepseek-v4.1-flash | cheap, 1M context |
 | Writer (lessons, rewrites, quizzes) | deepseek/deepseek-v4.1-flash, escalate to deepseek-v4-pro | quality/cost |
-| Eyes (PDF images, diagrams, charts) | deepseek-v4.1-flash + google/gemini-3.1-flash-lite cross-check; disagreement -> gemini-3.8-flash + human verify | two independent reads |
-| Ears (MP3/WAV/M4A/MP4/MOV) | google/gemini-3.1-flash-lite (audio+video input) | timestamped transcript |
-| Checker (source-fidelity audit) | google/gemini-3.1-flash-lite (different family than writer) | catches writer errors |
+| Eyes, primary (PDF images, diagrams, charts) | qwen/qwen3.7-flash (reasoning disabled) | $0.03/M in, $0.13/M out |
+| Eyes, cross-check | qwen/qwen3.8-flash | independent second read; any disagreement -> human verify queue |
+| Ears (MP3/WAV/M4A/MP4/MOV) | qwen/qwen3.8-omni-flash (audio+video input) | timestamped transcript |
+| Checker (source-fidelity audit) | qwen/qwen3.8-flash | different family than the writer |
 
-Verified 2026-09-28 on a rendered letter-key/calculation chart: all three vision models transcribed every character correctly. Cost per image $0.0002 to $0.003.
+**No Gemini** (owner decision 2026-09-28). qwen/qwen3.8-27b:free is not used in production (rate-limited upstream, returned 429 in testing).
+
+Verified 2026-09-28 on a rendered numerology chart (table, small red note, rotated purple label, faint "Soul" label): qwen3.7-flash, qwen3.8-flash and qwen3.8-omni-flash each transcribed every character correctly. Cost per image about $0.00006 (3.7 Flash) to $0.00035 (3.8 Flash). qwen3.7-flash must be called with reasoning disabled, otherwise it can spend the whole token budget thinking and return empty content.
 
 ## Flow
 1. **Ingest** any file: PDF, DOCX, TXT, MD, CSV, MP3, WAV, M4A, MP4, MOV, images. Text extracted, images extracted per page and read by Eyes, audio/video transcribed by Ears. Originals never modified.
