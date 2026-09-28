@@ -438,7 +438,7 @@ export class SupabaseKateRepository implements KateRepository {
       .from('modules')
       .insert({
         ...(data.id ? { id: data.id } : {}),
-        organization_id: data.organization_id,
+        /* modules/lessons have no organization_id column */
         course_id: data.course_id,
         title: data.title,
         description: data.description ?? null,
@@ -451,6 +451,7 @@ export class SupabaseKateRepository implements KateRepository {
   }
 
   async deleteModule(id: string): Promise<void> {
+    await this.db.from('content_locks').delete().eq('entity_type', 'module').eq('entity_id', id);
     const { error } = await this.db.from('modules').delete().eq('id', id);
     if (error) throw new HttpError(500, 'db_error', error.message);
   }
@@ -475,7 +476,7 @@ export class SupabaseKateRepository implements KateRepository {
       .from('lessons')
       .insert({
         ...(data.id ? { id: data.id } : {}),
-        organization_id: data.organization_id,
+        /* modules/lessons have no organization_id column */
         course_id: data.course_id,
         module_id: data.module_id,
         title: data.title,
@@ -516,6 +517,7 @@ export class SupabaseKateRepository implements KateRepository {
   }
 
   async deleteLesson(id: string): Promise<void> {
+    await this.db.from('content_locks').delete().eq('entity_type', 'lesson').eq('entity_id', id);
     const { error } = await this.db.from('lessons').delete().eq('id', id);
     if (error) throw new HttpError(500, 'db_error', error.message);
   }
@@ -592,6 +594,7 @@ export class SupabaseKateRepository implements KateRepository {
   }
 
   async archiveLessonItem(id: string): Promise<void> {
+    await this.db.from('content_locks').delete().eq('entity_type', 'lesson_item').eq('entity_id', id);
     const { error } = await this.db
       .from('lesson_items')
       .update({ archived_at: new Date().toISOString() })
@@ -605,6 +608,7 @@ export class SupabaseKateRepository implements KateRepository {
   }
 
   async deleteLessonItem(id: string): Promise<void> {
+    await this.db.from('content_locks').delete().eq('entity_type', 'lesson_item').eq('entity_id', id);
     const { error } = await this.db.from('lesson_items').delete().eq('id', id);
     if (error) throw new HttpError(500, 'db_error', error.message);
   }
@@ -769,7 +773,7 @@ export async function saveDraft(
       entityId = op.itemId;
     } else if (op.op === 'set_lock' || op.op === 'remove_lock') {
       entityType = op.entityType;
-      entityId = op.entityId;
+      entityId = op.entityId.startsWith('temp:') ? (crypto.randomUUID() as string) : op.entityId;
     }
 
     let operation: DBChangeSetItem['operation'] = 'update';
