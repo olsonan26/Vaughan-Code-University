@@ -113,6 +113,8 @@ export const InstructorStudio: React.FC = () => {
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           <Routes>
+            {/* Paths below are relative to /instructor (this component has no parent <Route>). */}
+            <Route path="/instructor">
             <Route index element={<StudioDashboard />} />
             <Route path="knowledge" element={<KnowledgeVaultPage />} />
             <Route path="knowledge/:sourceId" element={<SourceDetailPage />} />
@@ -137,6 +139,7 @@ export const InstructorStudio: React.FC = () => {
             <Route path="admin/health" element={<ComingNext title="System Health" description="Backend status, failed jobs and AI errors." milestone="Admin" />} />
             <Route path="admin/activity" element={<ComingNext title="Activity Log" description="Audit trail of important actions." milestone="Admin" />} />
             <Route path="*" element={<EmptyState title="Studio page not found" description="Use the Studio navigation to find what you need." />} />
+            </Route>
           </Routes>
         </div>
       </div>

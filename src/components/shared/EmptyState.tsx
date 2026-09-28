@@ -18,11 +18,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     if (!icon) {
       return <FolderOpen className="w-8 h-8 text-slate-400" />;
     }
-    if (typeof icon === 'function') {
+    // Already-rendered elements (e.g. <Icon />) pass through untouched.
+    if (React.isValidElement(icon)) return icon;
+    // Components: plain functions AND forwardRef/memo objects (lucide icons are
+    // forwardRef objects, so a `typeof === 'function'` check alone is not enough).
+    if (
+      typeof icon === 'function' ||
+      (typeof icon === 'object' && icon !== null && '$$typeof' in icon)
+    ) {
       const IconComp = icon as React.ComponentType<{ className?: string }>;
       return <IconComp className="w-8 h-8 text-slate-400" />;
     }
-    return icon;
+    return icon as React.ReactNode;
   };
 
   return (
