@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getClassroomCourses } from './api';
 import { convertLegacyCourseToClassroomCourse } from './adapter';
 import type { ClassroomCourse, ClassroomResponse } from '../../../shared/classroom/types';
@@ -22,13 +22,16 @@ export interface UseClassroomResult {
   refresh: () => Promise<void>;
 }
 
+const NO_IDS: string[] = [];
+
+/**
+ * Loads the Classroom once on mount (and on refresh()).
+ * Options are read through a ref so a caller passing new object/array literals on every render
+ * can never trigger a refetch loop (that loop caused the page to flash between loading and loaded).
+ */
 export function useClassroom(options: UseClassroomOptions = {}): UseClassroomResult {
-  const {
-    userLevel = 1,
-    userTier = 'free',
-    completedLessonIds = [],
-    legacyCourses,
-  } = options;
+  const optsRef = useRef(options);
+  optsRef.current = options;
 
   const [courses, setCourses] = useState<ClassroomCourse[]>([]);
   const [viewer, setViewer] = useState<ClassroomResponse['viewer'] | null>(null);
@@ -37,6 +40,7 @@ export function useClassroom(options: UseClassroomOptions = {}): UseClassroomRes
   const [isFallback, setIsFallback] = useState<boolean>(false);
 
   const getFallbackCourses = useCallback(() => {
+    const { userLevel = 1, userTier = 'free', completedLessonIds = NO_IDS, legacyCourses } = optsRef.current;
     let sourceCourses: Course[] = INITIAL_COURSES;
     if (legacyCourses && legacyCourses.length > 0) {
       sourceCourses = legacyCourses;
@@ -57,10 +61,13 @@ export function useClassroom(options: UseClassroomOptions = {}): UseClassroomRes
         userTier,
       })
     );
-  }, [legacyCourses, completedLessonIds, userLevel, userTier]);
+  }, []);
 
+  const loadedOnce = useRef(false);
   const fetchCourses = useCallback(async () => {
-    setIsLoading(true);
+    const userLevel = optsRef.current.userLevel ?? 1;
+    // Only show the loading state on the first load; refreshes update in place (no flashing).
+    if (!loadedOnce.current) setIsLoading(true);
     setError(null);
     try {
       const res = await getClassroomCourses();
@@ -82,9 +89,10 @@ export function useClassroom(options: UseClassroomOptions = {}): UseClassroomRes
       setViewer({ userId: null, isInstructor: false, level: userLevel });
       setIsFallback(true);
     } finally {
+      loadedOnce.current = true;
       setIsLoading(false);
     }
-  }, [getFallbackCourses, userLevel]);
+  }, [getFallbackCourses]);
 
   useEffect(() => {
     fetchCourses();
