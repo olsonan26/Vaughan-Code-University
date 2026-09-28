@@ -4,7 +4,7 @@ import type { ItemKind, ItemPayload, ItemSlot, PlacementTarget, Provenance, Sour
 import type { EvidenceChunk } from '../../ai/skills/types.js';
 import * as defaultRetrieval from '../retrieval.js';
 
-export function determineProvenance(allowBeyondSource: boolean, approvedAdditions?: string[]): Provenance {
+export function determineProvenance(allowBeyondSource: boolean, approvedAdditions?: string[]): Exclude<Provenance, 'imported'> {
   if (allowBeyondSource || (approvedAdditions && approvedAdditions.length > 0)) {
     return 'ai_with_approved_additions';
   }
@@ -34,7 +34,7 @@ export function buildPlacementOps(
   title: string,
   payload: ItemPayload,
   sourceRefs: SourceRef[],
-  provenance: Provenance,
+  provenance: Exclude<Provenance, 'imported'>,
   lock?: { rule: LockRule; message?: string } | null,
   position?: number
 ): BuildPlacementResult {
