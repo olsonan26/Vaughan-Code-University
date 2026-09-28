@@ -21,8 +21,24 @@ import {
 import { useApp } from '../../context/AppContext';
 import { Course, Lesson } from '../../types';
 import { LessonPlayer } from './LessonPlayer';
+import { useClassroom } from '../../features/classroom/useClassroom';
+import { DbClassroom } from '../../features/classroom/DbClassroom';
 
 export const ClassroomView: React.FC = () => {
+  const db = useClassroom();
+  React.useEffect(() => {
+    const h = () => { void db.refresh(); };
+    window.addEventListener('classroom:refresh', h);
+    return () => window.removeEventListener('classroom:refresh', h);
+  }, [db.refresh]);
+  if (!db.isFallback && db.courses.length > 0) {
+    return <DbClassroom courses={db.courses} isInstructor={!!db.viewer?.isInstructor} localMode={false} onRefresh={() => void db.refresh()} />;
+  }
+  if (db.isLoading) return <div className="p-10 text-center text-slate-500">Loading your classroom...</div>;
+  return <LegacyClassroomView />;
+};
+
+const LegacyClassroomView: React.FC = () => {
   const { 
     courses, 
     currentUser, 

@@ -25,6 +25,8 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { AccessRestricted } from './components/common/AccessRestricted';
 import { usePermissions } from './lib/permissions';
 import { DemoModeBanner } from './features/auth/DemoModeBanner';
+import { KatePanel } from './features/kate/KatePanel';
+import { PlacementHost } from './features/placement/PlacementHost';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
 import { useLocation } from 'react-router';
 
@@ -87,6 +89,8 @@ const MainLayout: React.FC = () => {
             <AccessRestricted area="Instructor Studio" />
           ))}
       </main>
+
+      {perms.canAccessInstructorStudio && <><KatePanel /><PlacementHost /></>}
 
       {currentUser?.subscriptionTier === 'free' && (
         <div className="sticky bottom-0 z-30 bg-white/95 border-t border-slate-200 backdrop-blur-md px-4 py-3 shadow-lg">

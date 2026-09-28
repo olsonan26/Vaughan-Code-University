@@ -57,7 +57,7 @@ export const SourceDetailPage: React.FC = () => {
       <PageHeader
         title={s.title}
         breadcrumbs={[{ label: 'Knowledge Vault', to: '/instructor/knowledge' }, { label: s.title }]}
-        actions={<div className="flex items-center gap-2"><AuthorityBadge level={s.authority_level} /><SourceStateBadge state={s.processing_state} /></div>}
+        actions={<div className="flex items-center gap-2">{s.processing_state === 'ready' && <button onClick={() => window.dispatchEvent(new CustomEvent('kate:open', { detail: { sourceIds: [s.id], checklist: true } }))} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">Ask Kate what to build</button>}<AuthorityBadge level={s.authority_level} /><SourceStateBadge state={s.processing_state} /></div>}
       />
 
       <ProcessingPanel detail={detail} onReprocess={async () => { await knowledgeApi.reprocess(s.id); load(); }} />

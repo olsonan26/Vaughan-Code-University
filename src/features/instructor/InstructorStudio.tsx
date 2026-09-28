@@ -2,10 +2,11 @@ import { KnowledgeVaultPage } from '../knowledge/KnowledgeVaultPage';
 import { SourceDetailPage } from '../knowledge/SourceDetailPage';
 import { JobsPage } from '../jobs/JobsPage';
 import { JobDetailPage } from '../jobs/JobDetailPage';
+import { KatePage } from '../kate/KatePage';
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router';
 import {
-  Activity, ArrowLeft, BookOpen, FolderOpen, Gauge, HeartPulse, KeyRound, LayoutDashboard, Menu, ScrollText, ShieldCheck, Users, X,
+  Sparkles, Activity, ArrowLeft, BookOpen, FolderOpen, Gauge, HeartPulse, KeyRound, LayoutDashboard, Menu, ScrollText, ShieldCheck, Users, X,
 } from 'lucide-react';
 import type { Permission } from '../../../shared/auth/permissions';
 import { useStudioPermissions } from './permissions';
@@ -19,6 +20,7 @@ interface NavItem { to: string; label: string; icon: React.ComponentType<{ class
 const STUDIO_NAV: NavItem[] = [
   { to: '/instructor', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/instructor/knowledge', label: 'Knowledge Vault', icon: FolderOpen },
+  { to: '/instructor/kate', label: 'Kate', icon: Sparkles, permission: 'kate.use' },
   { to: '/instructor/courses', label: 'My Courses', icon: BookOpen },
   { to: '/instructor/jobs', label: 'Generation Jobs', icon: Activity },
 ];
@@ -126,6 +128,7 @@ export const InstructorStudio: React.FC = () => {
               <Route path="publish" element={<ComingNext title="Publish" description="Readiness checklist and publishing to the University Classroom." milestone="Publishing" />} />
               <Route path="preview" element={<ComingNext title="Preview as student" description="See the course exactly as students will." milestone="Publishing" />} />
             </Route>
+            <Route path="kate" element={<KatePage />} />
             <Route path="jobs" element={<JobsPage />} />
             <Route path="jobs/:jobId" element={<JobDetailPage />} />
             <Route path="admin/users" element={<ComingNext title="Users & Roles" description="Grant and revoke roles." milestone="Admin" />} />
