@@ -24,6 +24,9 @@ export const PERMISSIONS = [
   'knowledge.manage_all',
   'knowledge.set_authority', // set levels 4-5 (canonical / approved)
   'knowledge.lock', // lock canonical concepts / principles
+  'classroom.manage', // place material, edit classroom structure
+  'kate.use', // chat with Kate
+  'content.lock', // lock/unlock anything in the Classroom
   // Courses
   'course.create',
   'course.edit_own', // owned or collaborator
@@ -53,6 +56,9 @@ const INSTRUCTOR: Permission[] = [
   'course.create',
   'course.edit_own',
   'ai.generate',
+  'classroom.manage',
+  'kate.use',
+  'content.lock',
 ];
 
 const SENIOR_INSTRUCTOR: Permission[] = [
