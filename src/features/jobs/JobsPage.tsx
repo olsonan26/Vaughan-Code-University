@@ -11,7 +11,7 @@ import { JobStatusBadge } from './JobStatusBadge';
 import { formatJobType } from './JobPipeline';
 import { ApiError } from '../../services/api/client';
 import type { ListJobsFilter } from './api';
-import type { JobState } from '../../shared/jobs/types';
+import type { JobState } from '../../../shared/jobs/types';
 
 type FilterTab = 'all' | 'active' | 'failed' | 'completed';
 

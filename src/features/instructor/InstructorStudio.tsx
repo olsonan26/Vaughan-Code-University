@@ -1,3 +1,5 @@
+import { JobsPage } from '../jobs/JobsPage';
+import { JobDetailPage } from '../jobs/JobDetailPage';
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router';
 import {
@@ -122,8 +124,8 @@ export const InstructorStudio: React.FC = () => {
               <Route path="publish" element={<ComingNext title="Publish" description="Readiness checklist and publishing to the University Classroom." milestone="Publishing" />} />
               <Route path="preview" element={<ComingNext title="Preview as student" description="See the course exactly as students will." milestone="Publishing" />} />
             </Route>
-            <Route path="jobs" element={<ComingNext title="Generation Jobs" description="Every AI job with its real step-by-step state." milestone="Generation Jobs UI" />} />
-            <Route path="jobs/:jobId" element={<ComingNext title="Job" description="Pipeline steps, errors and retries." milestone="Generation Jobs UI" />} />
+            <Route path="jobs" element={<JobsPage />} />
+            <Route path="jobs/:jobId" element={<JobDetailPage />} />
             <Route path="admin/users" element={<ComingNext title="Users & Roles" description="Grant and revoke roles." milestone="Admin" />} />
             <Route path="admin/ai" element={<ComingNext title="AI Configuration" description="Provider, model, tiers and limits. Keys are never shown." milestone="Admin" />} />
             <Route path="admin/knowledge" element={<ComingNext title="Knowledge Authority" description="Canonical sources and locked knowledge." milestone="Admin" />} />
