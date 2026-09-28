@@ -50,6 +50,8 @@ export class SupabaseAuthResolver implements AuthResolver {
       (r) => r.role as AppRole
     );
 
+    await maybeBootstrapHeadmaster(supabase, user, orgId, roles);
+
     const permissions = permissionsFor(roles);
 
     return {
@@ -143,4 +145,32 @@ export function optionalAuth(customResolver?: AuthResolver): MiddlewareHandler<A
 
     await next();
   };
+}
+
+
+/**
+ * One-time owner bootstrap: if BOOTSTRAP_HEADMASTER_EMAIL is set, the organization has NO headmaster yet,
+ * and a user signs in with that exact, confirmed email, grant them headmaster. After the first headmaster
+ * exists this never fires again; further roles are assigned in-app (admin.users). Logged to activity_log.
+ */
+async function maybeBootstrapHeadmaster(supabase: any, user: any, orgId: string, roles: AppRole[]) {
+  const target = (process.env.BOOTSTRAP_HEADMASTER_EMAIL || '').trim().toLowerCase();
+  if (!target || roles.includes('headmaster' as AppRole)) return;
+  if ((user.email || '').toLowerCase() !== target || !user.email_confirmed_at) return;
+  const { count } = await supabase
+    .from('user_roles')
+    .select('user_id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('role', 'headmaster');
+  if ((count ?? 0) > 0) return;
+  const { error } = await supabase.from('user_roles').insert({ user_id: user.id, organization_id: orgId, role: 'headmaster' });
+  if (error) {
+    console.error('[auth] headmaster bootstrap failed:', error.message);
+    return;
+  }
+  roles.push('headmaster' as AppRole);
+  await supabase.from('activity_log').insert({
+    organization_id: orgId, actor_id: user.id, action: 'role.bootstrap_headmaster', entity_type: 'user', entity_id: user.id,
+    metadata: { reason: 'BOOTSTRAP_HEADMASTER_EMAIL matched first confirmed sign-in' },
+  }).then(() => undefined, () => undefined);
 }

@@ -31,7 +31,13 @@ VALUES
   )
 ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Hosted Supabase already enables RLS on storage.objects (and the table is owned by supabase_storage_admin).
+-- Only enable it where we own the table (local test harness).
+DO $$ BEGIN
+  IF (SELECT tableowner FROM pg_tables WHERE schemaname = 'storage' AND tablename = 'objects') = current_user THEN
+    EXECUTE 'ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY';
+  END IF;
+END $$;
 
 DROP POLICY IF EXISTS "course_media_select_policy" ON storage.objects;
 CREATE POLICY "course_media_select_policy"

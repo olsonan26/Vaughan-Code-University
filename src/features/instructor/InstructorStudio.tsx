@@ -1,3 +1,5 @@
+import { KnowledgeVaultPage } from '../knowledge/KnowledgeVaultPage';
+import { SourceDetailPage } from '../knowledge/SourceDetailPage';
 import { JobsPage } from '../jobs/JobsPage';
 import { JobDetailPage } from '../jobs/JobDetailPage';
 import React, { useEffect, useState } from 'react';
@@ -110,8 +112,8 @@ export const InstructorStudio: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           <Routes>
             <Route index element={<StudioDashboard />} />
-            <Route path="knowledge" element={<ComingNext title="Knowledge Vault" description="Upload, process and govern the sources AI is allowed to teach from." milestone="Knowledge Vault" />} />
-            <Route path="knowledge/:sourceId" element={<ComingNext title="Source" description="Raw source, extracted text and derived concepts." milestone="Knowledge Vault" />} />
+            <Route path="knowledge" element={<KnowledgeVaultPage />} />
+            <Route path="knowledge/:sourceId" element={<SourceDetailPage />} />
             <Route path="courses" element={<ComingNext title="My Courses" description="Courses you own or collaborate on." milestone="Course Factory" />} />
             <Route path="courses/new" element={<ComingNext title="Create Course" description="Choose knowledge, define students and outcome, set preferences, build the curriculum." milestone="Course Factory" />} />
             <Route path="course/:courseId" element={<CourseLayout />}>

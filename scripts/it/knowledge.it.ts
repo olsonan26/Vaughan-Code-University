@@ -91,6 +91,9 @@ try {
   const job = await call(U.instA, 'GET', `/jobs/${created.json.job.id}`);
   check('job completed at 100%', job.json?.job?.state === 'completed' || job.json?.state === 'completed', job.json?.job ?? job.json);
 
+  const ov = await call(U.instA, 'GET', '/studio/overview');
+  check('dashboard overview returns real data', ov.status === 200 && ov.json.recentSources.some((r: any) => r.id === sourceId) && Array.isArray(ov.json.courses), ov);
+  check('student denied dashboard', (await call(U.student, 'GET', '/studio/overview')).status === 403);
   check('instructor B cannot see A source', (await call(U.instB, 'GET', `/knowledge/sources/${sourceId}`)).status === 404);
   const listB = await call(U.instB, 'GET', '/knowledge/sources');
   check('instructor B list excludes A', listB.status === 200 && listB.json.items.length === 0, listB.json);

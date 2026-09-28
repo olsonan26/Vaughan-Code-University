@@ -4,6 +4,7 @@ import { meRoutes } from './me.js';
 import { adminRoutes } from './admin.js';
 import { jobsRoutes } from './jobs.js';
 import { knowledgeRoutes } from './knowledge.js';
+import { studioRoutes } from './studio.js';
 import { registerKnowledgeHandlers } from '../knowledge/processor.js';
 
 registerKnowledgeHandlers();
@@ -17,4 +18,5 @@ export function registerRoutes(app: Hono<AppEnv>) {
   app.route('/admin', adminRoutes);
   app.route('/jobs', jobsRoutes);
   app.route('/knowledge', knowledgeRoutes);
+  app.route('/studio', studioRoutes);
 }
