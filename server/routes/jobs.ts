@@ -28,10 +28,13 @@ export const jobsRoutes = new Hono<AppEnv>();
  */
 export function kickWorker(c: Context<AppEnv>) {
   if (process.env.JOBS_KICK === 'off') return;
-  const runner = () =>
-    runOnce({ workerId: 'kick-worker', maxSteps: 3, timeBudgetMs: 60000 }).catch((err) => {
+  // 3 parallel lanes (steps are claimed atomically with SKIP LOCKED), within the 300s function limit.
+  // Long jobs continue on the next kick: every enqueue, and every job-status poll from the UI.
+  const lane = (n: number) =>
+    runOnce({ workerId: `kick-${n}-${crypto.randomUUID().slice(0, 6)}`, maxSteps: 100, timeBudgetMs: 230000 }).catch((err) => {
       console.error('kickWorker runner error:', err);
     });
+  const runner = () => Promise.all([lane(1), lane(2), lane(3)]);
 
   let ctx: { waitUntil?: (p: Promise<unknown>) => void } | undefined;
   try {
@@ -90,6 +93,10 @@ jobsRoutes.get('/:id', requireAuth(), async (c) => {
   let jobWithSteps = await getJobWithSteps(id);
   if (!jobWithSteps) {
     throw new HttpError(404, 'not_found', 'Job not found');
+  }
+  // Keep active jobs moving: if nothing has touched this job for 20s, start a worker.
+  if (['queued', 'running', 'retrying'].includes(jobWithSteps.state) && Date.now() - new Date(jobWithSteps.updatedAt).getTime() > 20000) {
+    kickWorker(c);
   }
 
   const isAdmin = auth?.can?.('admin.jobs') || auth?.permissions?.has?.('admin.jobs' as any);

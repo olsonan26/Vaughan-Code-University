@@ -144,6 +144,8 @@ knowledgeRoutes.get('/sources', async (c) => {
   }
   const { data, error, count } = await query;
   if (error) throw new HttpError(500, 'db_error', error.message);
+  const busy = ['queued', 'extracting', 'extracted', 'chunking', 'chunked', 'indexing', 'analyzing'];
+  if ((data ?? []).some((s: any) => busy.includes(s.processing_state) && Date.now() - new Date(s.updated_at).getTime() > 20000)) kickWorker(c);
   return c.json({ items: data ?? [], total: count ?? 0 });
 });
 

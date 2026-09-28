@@ -12,6 +12,8 @@ process.env.SUPABASE_ANON_KEY = signJwt({ role: 'anon' });
 process.env.SUPABASE_SERVICE_ROLE_KEY = signJwt({ role: 'service_role' });
 process.env.AI_PROVIDER = 'mock';
 process.env.JOBS_KICK = 'off';
+process.env.EMBEDDING_PROVIDER = 'none'; // hermetic: no paid calls in automated tests
+process.env.DEEPSEEK_API_KEY = '';
 
 const sql = (q: string) => execSync(`psql -h /tmp -p 54322 -U postgres -d vcu_it -Atqc "${q.replace(/"/g, '\\"')}"`).toString().trim();
 let failures = 0;
