@@ -1,11 +1,11 @@
 /**
  * Embedding providers. DeepSeek has no embeddings API, so semantic search uses OpenAI
- * embeddings when OPENAI_API_KEY is set; otherwise callers fall back to Postgres full-text search.
+ * embeddings (directly with OPENAI_API_KEY, or through OpenRouter with an sk-or- key); otherwise callers fall back to Postgres full-text search.
  */
 import { serverEnv } from '../../env.js';
 
 export interface EmbeddingProvider {
-  name: 'openai' | 'none';
+  name: 'openai' | 'openrouter' | 'none';
   dimensions: number;
   embed(texts: string[]): Promise<number[][]>;
 }
@@ -18,12 +18,12 @@ export const noneEmbeddingProvider: EmbeddingProvider = {
   },
 };
 
-export function createOpenAiEmbeddingProvider(opts: { apiKey: string; model?: string; dimensions?: number; fetchImpl?: typeof fetch }): EmbeddingProvider {
+export function createOpenAiEmbeddingProvider(opts: { apiKey: string; model?: string; dimensions?: number; fetchImpl?: typeof fetch; baseUrl?: string; name?: 'openai' | 'openrouter' }): EmbeddingProvider {
   const f = opts.fetchImpl ?? fetch;
   const model = opts.model ?? 'text-embedding-3-small';
   const dimensions = opts.dimensions ?? 1536;
   return {
-    name: 'openai',
+    name: opts.name ?? 'openai',
     dimensions,
     async embed(texts) {
       const out: number[][] = [];
@@ -31,7 +31,7 @@ export function createOpenAiEmbeddingProvider(opts: { apiKey: string; model?: st
         const batch = texts.slice(i, i + 96).map((t) => t.slice(0, 24000));
         let lastErr: unknown;
         for (let attempt = 0; attempt < 4; attempt++) {
-          const res = await f('https://api.openai.com/v1/embeddings', {
+          const res = await f(`${opts.baseUrl ?? 'https://api.openai.com/v1'}/embeddings`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${opts.apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ model, input: batch, dimensions }),
@@ -56,6 +56,10 @@ export function createOpenAiEmbeddingProvider(opts: { apiKey: string; model?: st
 export function getEmbeddingProvider(): EmbeddingProvider {
   if (serverEnv.embeddingProvider === 'openai' && serverEnv.openaiApiKey) {
     return createOpenAiEmbeddingProvider({ apiKey: serverEnv.openaiApiKey, model: serverEnv.embeddingModel, dimensions: serverEnv.embeddingDimensions });
+  }
+  if (serverEnv.embeddingProvider === 'openrouter' && serverEnv.deepseekApiKey) {
+    // DeepSeek has no embedding model; the same OpenRouter key serves OpenAI text-embedding-3-small (~$0.02 per 1M tokens).
+    return createOpenAiEmbeddingProvider({ apiKey: serverEnv.deepseekApiKey, baseUrl: 'https://openrouter.ai/api/v1', name: 'openrouter', model: serverEnv.embeddingModel, dimensions: serverEnv.embeddingDimensions });
   }
   return noneEmbeddingProvider;
 }

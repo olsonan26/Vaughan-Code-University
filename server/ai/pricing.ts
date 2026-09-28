@@ -24,6 +24,9 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
     cachedInputUsdPerM: 0.14,
     outputUsdPerM: 2.19,
   },
+  // OpenRouter routes (fallback estimates; OpenRouter-reported cost is used when present)
+  'deepseek/deepseek-v4.1-flash': { inputUsdPerM: 0.03, cachedInputUsdPerM: 0.01, outputUsdPerM: 0.6 },
+  'deepseek/deepseek-v4-pro': { inputUsdPerM: 0.96, cachedInputUsdPerM: 0.1, outputUsdPerM: 1.91 },
   // Default fallback estimate
   default: {
     inputUsdPerM: 0.14,

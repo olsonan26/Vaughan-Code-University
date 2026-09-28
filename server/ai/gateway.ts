@@ -1,5 +1,6 @@
 import { extractJson } from './json.js';
 import { estimateCostUsd } from './pricing.js';
+import { z } from 'zod';
 import { resolveTier, resolveModel, type AiTier, type TierDefaults } from './tiers.js';
 import { AiOutputValidationError } from './errors.js';
 import { wrapUntrusted } from './untrusted.js';
@@ -62,6 +63,8 @@ export function createGateway(opts?: GatewayOptions): Gateway {
       const tierConfig = resolveTier(req.tier, tierOverrides);
       const model = resolveModel(req.tier);
 
+      const systemPrompt = withOutputContract(req.system, req.schema);
+
       const untrustedFormatted =
         req.untrustedContext && req.untrustedContext.length > 0
           ? wrapUntrusted(req.untrustedContext)
@@ -77,13 +80,20 @@ export function createGateway(opts?: GatewayOptions): Gateway {
       let totalLatencyMs = 0;
       let attempts = 0;
       let resModel = model;
+      let reportedCost = 0;
+      let allCostsReported = true;
+      const trackCost = (r: { costUsd?: number }) => {
+        if (typeof r.costUsd === 'number') reportedCost += r.costUsd;
+        else allCostsReported = false;
+      };
+      /** Provider-reported cost (OpenRouter) when available, otherwise the pricing-table estimate. */
+      const costNow = () =>
+        attempts > 0 && allCostsReported && reportedCost > 0
+          ? Number(reportedCost.toFixed(6))
+          : estimateCostUsd(resModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cachedTokens: totalCachedTokens });
 
       const logHelper = async (status: 'success' | 'error', errorMsg?: string) => {
-        const cost = estimateCostUsd(resModel, {
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-          cachedTokens: totalCachedTokens,
-        });
+        const cost = costNow();
 
         const logEntry: AiRequestLogEntry = {
           organization_id: req.context.organizationId,
@@ -117,12 +127,13 @@ export function createGateway(opts?: GatewayOptions): Gateway {
       let res;
       try {
         res = await provider.chat({
-          system: req.system,
+          system: systemPrompt,
           messages,
           json: true,
           model,
           temperature: tierConfig.temperature,
           maxTokens: tierConfig.maxTokens,
+          reasoning: tierConfig.reasoning,
           timeoutMs: tierConfig.timeoutMs,
         });
       } catch (err: any) {
@@ -135,6 +146,7 @@ export function createGateway(opts?: GatewayOptions): Gateway {
       totalCachedTokens += res.usage.cachedTokens ?? 0;
       totalLatencyMs += res.latencyMs ?? 0;
       resModel = res.model || model;
+      trackCost(res);
 
       let parseIssues: unknown = null;
       try {
@@ -142,11 +154,7 @@ export function createGateway(opts?: GatewayOptions): Gateway {
         const val = req.schema.safeParse(parsedJson);
         if (val.success) {
           await logHelper('success');
-          const cost = estimateCostUsd(resModel, {
-            inputTokens: totalInputTokens,
-            outputTokens: totalOutputTokens,
-            cachedTokens: totalCachedTokens,
-          });
+          const cost = costNow();
           return {
             data: val.data,
             meta: {
@@ -191,12 +199,13 @@ export function createGateway(opts?: GatewayOptions): Gateway {
       let repairRes;
       try {
         repairRes = await provider.chat({
-          system: req.system,
+          system: systemPrompt,
           messages: repairMessages,
           json: true,
           model,
           temperature: tierConfig.temperature,
           maxTokens: tierConfig.maxTokens,
+          reasoning: tierConfig.reasoning,
           timeoutMs: tierConfig.timeoutMs,
         });
       } catch (err: any) {
@@ -209,17 +218,14 @@ export function createGateway(opts?: GatewayOptions): Gateway {
       totalCachedTokens += repairRes.usage.cachedTokens ?? 0;
       totalLatencyMs += repairRes.latencyMs ?? 0;
       resModel = repairRes.model || resModel;
+      trackCost(repairRes);
 
       try {
         const parsedRepairJson = extractJson<T>(repairRes.text);
         const valRepair = req.schema.safeParse(parsedRepairJson);
         if (valRepair.success) {
           await logHelper('success');
-          const cost = estimateCostUsd(resModel, {
-            inputTokens: totalInputTokens,
-            outputTokens: totalOutputTokens,
-            cachedTokens: totalCachedTokens,
-          });
+          const cost = costNow();
           return {
             data: valRepair.data,
             meta: {
@@ -250,4 +256,27 @@ export function createGateway(opts?: GatewayOptions): Gateway {
       throw valError;
     },
   };
+}
+
+
+const contractCache = new WeakMap<object, string>();
+
+/**
+ * Appends the exact JSON Schema of the expected output to the (trusted) system prompt,
+ * so every model knows field names, enums and nesting instead of guessing.
+ */
+export function withOutputContract(system: string, schema: unknown): string {
+  let contract = contractCache.get(schema as object);
+  if (contract === undefined) {
+    try {
+      const js = z.toJSONSchema(schema as any, { unrepresentable: 'any', io: 'input' }) as Record<string, unknown>;
+      delete js.$schema;
+      contract = JSON.stringify(js);
+    } catch {
+      contract = '';
+    }
+    contractCache.set(schema as object, contract);
+  }
+  if (!contract) return system;
+  return `${system}\n\nOUTPUT CONTRACT: respond with ONE JSON object that validates against this JSON Schema exactly (same field names, allowed enum values only, objects where objects are required, null instead of empty strings for nullable fields). No prose, no markdown fences.\n${contract}`;
 }

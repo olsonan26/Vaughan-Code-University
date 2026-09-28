@@ -23,13 +23,15 @@ export function createDeepSeekProvider(options: DeepSeekProviderOptions = {}): C
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const maxRetries = options.maxRetries ?? 3;
   const sleepImpl = options.sleepImpl ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const viaOpenRouter = /openrouter\.ai/.test(baseUrl);
+  const label = viaOpenRouter ? 'DeepSeek (via OpenRouter)' : 'DeepSeek';
 
   return {
-    name: 'deepseek',
+    name: viaOpenRouter ? 'deepseek-openrouter' : 'deepseek',
 
     async chat(req: ChatRequest): Promise<ChatResponse> {
       if (!apiKey) {
-        throw new AiNotConfiguredError('DeepSeek is not configured: set DEEPSEEK_API_KEY on the server');
+        throw new AiNotConfiguredError('AI is not configured: set DEEPSEEK_API_KEY on the server');
       }
 
       const model = req.model || defaultModel;
@@ -63,6 +65,12 @@ export function createDeepSeekProvider(options: DeepSeekProviderOptions = {}): C
         body.max_tokens = req.maxTokens;
       }
 
+      if (viaOpenRouter) {
+        // OpenRouter normalizes reasoning controls across providers; 'off' saves tokens on light tasks.
+        if (req.reasoning) body.reasoning = req.reasoning === 'off' ? { enabled: false } : { effort: req.reasoning };
+        body.provider = { require_parameters: true, allow_fallbacks: true };
+      }
+
       const controller = new AbortController();
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -91,6 +99,7 @@ export function createDeepSeekProvider(options: DeepSeekProviderOptions = {}): C
               headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${apiKey}`,
+                ...(viaOpenRouter ? { 'HTTP-Referer': 'https://vaughan-code-university.vercel.app', 'X-Title': 'Vaughan Code University Studio' } : {}),
               },
               body: JSON.stringify(body),
               signal: controller.signal,
@@ -129,6 +138,7 @@ export function createDeepSeekProvider(options: DeepSeekProviderOptions = {}): C
               usage,
               latencyMs,
               finishReason,
+              costUsd: typeof data.usage?.cost === 'number' ? data.usage.cost : undefined,
             };
           }
 
@@ -140,7 +150,7 @@ export function createDeepSeekProvider(options: DeepSeekProviderOptions = {}): C
               await sleepImpl(backoff);
               continue;
             }
-            throw new AiRateLimitError('DeepSeek rate limit exceeded');
+            throw new AiRateLimitError(`${label} rate limit exceeded`);
           }
 
           if (status >= 500) {
@@ -156,7 +166,7 @@ export function createDeepSeekProvider(options: DeepSeekProviderOptions = {}): C
           // 400, 401, 403, etc.
           const errText = await response.text().catch(() => '');
           if (status === 401) {
-            throw new AiProviderError(401, false, 'The DeepSeek API key is invalid');
+            throw new AiProviderError(401, false, `The ${label} API key is invalid`);
           }
           throw new AiProviderError(status, false, errText || `DeepSeek provider error status ${status}`);
         }

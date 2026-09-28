@@ -3,8 +3,11 @@ import type { AiTier } from '../../shared/ai/types.js';
 
 export type { AiTier };
 
+import type { ReasoningEffort } from './providers/types.js';
+
 export interface TierDefaults {
   modelKind: 'chat' | 'reasoning';
+  reasoning?: ReasoningEffort;
   temperature?: number;
   maxTokens: number;
   timeoutMs: number;
@@ -13,25 +16,31 @@ export interface TierDefaults {
 export const TIER_DEFAULTS: Record<AiTier, TierDefaults> = {
   LIGHT: {
     modelKind: 'chat',
+    reasoning: 'off',
     temperature: 0.3,
-    maxTokens: 1500,
+    maxTokens: 4000,
     timeoutMs: 60000,
   },
   STANDARD: {
     modelKind: 'chat',
+    reasoning: 'low',
     temperature: 0.5,
-    maxTokens: 4000,
+    maxTokens: 12000,
     timeoutMs: 120000,
   },
   HIGH: {
+    // accuracy-critical work (knowledge analysis, architecture, audits): Flash with more thinking.
+    // Live test 2026-09-28: Flash+medium matched Pro on concept extraction at ~1/20 the cost and half the time.
     modelKind: 'chat',
-    temperature: 0.4,
-    maxTokens: 8000,
+    reasoning: 'medium',
+    temperature: 0.3,
+    maxTokens: 16000,
     timeoutMs: 180000,
   },
   MAX: {
     modelKind: 'reasoning',
-    maxTokens: 8000,
+    reasoning: 'high',
+    maxTokens: 16000,
     timeoutMs: 280000,
   },
 };

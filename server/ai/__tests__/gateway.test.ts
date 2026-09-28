@@ -201,7 +201,9 @@ describe('AI Gateway', () => {
       context: dummyContext,
     });
 
-    expect(capturedSystemPrompt).toBe('Pure System Prompt Only');
+    expect(capturedSystemPrompt.startsWith('Pure System Prompt Only')).toBe(true);
+    expect(capturedSystemPrompt).toContain('OUTPUT CONTRACT');
+    expect(capturedSystemPrompt).not.toContain('SOURCE');
     expect(capturedSystemPrompt).not.toContain('malicious');
     expect(capturedSystemPrompt).not.toContain('injection');
   });

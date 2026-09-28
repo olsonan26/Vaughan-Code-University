@@ -14,7 +14,11 @@ export interface ChatRequest {
   maxTokens?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Reasoning effort for models that think before answering (ignored where unsupported). */
+  reasoning?: ReasoningEffort;
 }
+
+export type ReasoningEffort = 'off' | 'low' | 'medium' | 'high';
 
 export interface ChatResponse {
   text: string;
@@ -22,6 +26,8 @@ export interface ChatResponse {
   usage: TokenUsage;
   latencyMs: number;
   finishReason?: string;
+  /** Exact cost reported by the provider (OpenRouter), when available. */
+  costUsd?: number;
 }
 
 export interface ChatProvider {
