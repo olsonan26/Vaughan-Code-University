@@ -20,7 +20,7 @@ export const placementTargetSchema = z.object({
   }).nullable().optional(),
 });
 
-export const lockRuleSchema = z.record(z.unknown()).or(z.object({
+export const lockRuleSchema = z.record(z.string(), z.unknown()).or(z.object({
   type: z.string(),
 }));
 

@@ -42,7 +42,7 @@ export interface ChangeSetDraft {
 }
 
 export interface ChangeSetView {
-  id: string; title: string; summary: string | null; status: 'proposed' | 'applied' | 'reverted' | 'rejected';
+  id: string; courseId: string; title: string; summary: string | null; status: 'proposed' | 'applied' | 'reverted' | 'rejected';
   ops: (ChangeOp & { summary: string })[]; audit?: ChangeSetDraft['audit']; createdAt: string; appliedAt: string | null;
 }
 

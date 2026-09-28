@@ -29,7 +29,7 @@ export async function assertCourseTeam(db: any, auth: AuthContext, courseId: str
 
     const { data: collab } = await db
       .from('course_collaborators')
-      .select('id')
+      .select('user_id')
       .eq('course_id', courseId)
       .eq('user_id', auth.userId)
       .maybeSingle();

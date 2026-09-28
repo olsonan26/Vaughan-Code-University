@@ -5,6 +5,10 @@ import { adminRoutes } from './admin.js';
 import { jobsRoutes } from './jobs.js';
 import { knowledgeRoutes } from './knowledge.js';
 import { studioRoutes } from './studio.js';
+import { classroomRoutes } from './classroom.js';
+import { studioClassroomRoutes } from './studioClassroom.js';
+import { kateRoutes } from './kate.js';
+import { kateChangeSetRoutes } from './kateChangeSets.js';
 import { registerKnowledgeHandlers } from '../knowledge/processor.js';
 
 registerKnowledgeHandlers();
@@ -18,5 +22,9 @@ export function registerRoutes(app: Hono<AppEnv>) {
   app.route('/admin', adminRoutes);
   app.route('/jobs', jobsRoutes);
   app.route('/knowledge', knowledgeRoutes);
+  app.route('/classroom', classroomRoutes);
+  app.route('/studio/classroom', studioClassroomRoutes);
+  app.route('/kate/change-sets', kateChangeSetRoutes);
+  app.route('/kate', kateRoutes);
   app.route('/studio', studioRoutes);
 }

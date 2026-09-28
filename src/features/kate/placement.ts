@@ -1,4 +1,4 @@
-export { PlacementPicker } from './_placeholders/PlacementPicker';
-export type { PlacementPickerProps } from './_placeholders/PlacementPicker';
-export { LockEditor } from './_placeholders/LockEditor';
-export type { LockEditorProps } from './_placeholders/LockEditor';
+export { PlacementPicker } from '../placement/PlacementPicker';
+export type { PlacementPickerProps } from '../placement/PlacementPicker';
+export { LockEditor } from '../placement/LockEditor';
+export type { LockEditorProps } from '../placement/LockEditor';

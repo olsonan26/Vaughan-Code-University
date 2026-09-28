@@ -747,17 +747,17 @@ export async function saveDraft(
 
   const items: DBChangeSetItem[] = draft.ops.map((op, idx) => {
     let entityType = 'lesson_item';
-    let entityId = crypto.randomUUID();
+    let entityId = crypto.randomUUID() as string;
 
     if (op.op === 'create_module') {
       entityType = 'module';
-      entityId = crypto.randomUUID();
+      entityId = crypto.randomUUID() as string;
     } else if (op.op === 'create_lesson') {
       entityType = 'lesson';
-      entityId = crypto.randomUUID();
+      entityId = crypto.randomUUID() as string;
     } else if (op.op === 'create_item') {
       entityType = 'lesson_item';
-      entityId = crypto.randomUUID();
+      entityId = crypto.randomUUID() as string;
     } else if (op.op === 'update_item') {
       entityType = 'lesson_item';
       entityId = op.itemId;
@@ -842,6 +842,7 @@ export async function getView(deps: KateDeps, id: string): Promise<ChangeSetView
 
   return {
     id: cs.id,
+    courseId: cs.course_id,
     title: cs.title,
     summary,
     status: cs.status,

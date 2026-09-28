@@ -51,7 +51,7 @@ export function groupChecklistSuggestions(suggestions: KateSuggestion[] = []): {
  * Determines whether a ChangeSet can be applied given its audit status and user override.
  */
 export function canApplyChangeSet(
-  changeSet: { audit?: { passed: boolean } } | null | undefined,
+  changeSet: { audit?: { passed: boolean; [k: string]: unknown } } | null | undefined,
   overrideAudit: boolean = false
 ): boolean {
   if (!changeSet) return false;

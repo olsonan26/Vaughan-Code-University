@@ -404,6 +404,7 @@ export const ChangeSetCard: React.FC<ChangeSetCardProps> = ({
                 <LockEditor
                   value={selectedLockRule}
                   onChange={setSelectedLockRule}
+                  lessonsForSelect={[]}
                 />
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200">

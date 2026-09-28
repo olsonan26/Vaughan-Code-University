@@ -150,7 +150,7 @@ export async function getAllChunks(
     return [];
   }
 
-  const result: EvidenceChunk[] = [];
+  const result: RetrievalChunk[] = [];
   let tokenCount = 0;
 
   for (const c of chunks) {

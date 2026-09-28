@@ -33,7 +33,7 @@ export async function getGenerator(action: string): Promise<{ generate: Generato
   }
 
   try {
-    const mod = await import(`./generators/${action}.js`);
+    const mod: any = { generate: (await import('./generators/index.js')).GENERATORS[action] };
     if (mod && typeof mod.generate === 'function') {
       return { generate: mod.generate };
     }
@@ -55,7 +55,7 @@ export async function getChecklistBuilder(): Promise<{ buildChecklist: Checklist
   }
 
   try {
-    const mod = await import(`./generators/checklist.js`);
+    const mod: any = await import('./generators/index.js');
     if (mod && typeof mod.buildChecklist === 'function') {
       return { buildChecklist: mod.buildChecklist };
     }
