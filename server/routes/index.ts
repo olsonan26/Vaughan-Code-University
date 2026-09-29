@@ -9,9 +9,12 @@ import { classroomRoutes } from './classroom.js';
 import { studioClassroomRoutes } from './studioClassroom.js';
 import { kateRoutes } from './kate.js';
 import { kateChangeSetRoutes } from './kateChangeSets.js';
+import { courseBuildRoutes } from './courseBuilds.js';
 import { registerKnowledgeHandlers } from '../knowledge/processor.js';
+import { registerCourseBuildHandlers } from '../kate/courseBuild.js';
 
 registerKnowledgeHandlers();
+registerCourseBuildHandlers();
 
 /**
  * Route registry. Each feature exports a Hono sub-app and is mounted here.
@@ -26,5 +29,6 @@ export function registerRoutes(app: Hono<AppEnv>) {
   app.route('/studio/classroom', studioClassroomRoutes);
   app.route('/kate/change-sets', kateChangeSetRoutes);
   app.route('/kate', kateRoutes);
+  app.route('/studio/builds', courseBuildRoutes);
   app.route('/studio', studioRoutes);
 }

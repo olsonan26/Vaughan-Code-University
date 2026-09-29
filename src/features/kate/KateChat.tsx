@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, X, FileText, MapPin, RotateCw, Loader2, Paperclip } from 'lucide-react';
 import type { KateMessageView, ChangeSetView } from '../../../shared/kate/types';
 import type { PlacementTarget } from '../../../shared/classroom/types';
@@ -136,6 +136,8 @@ export const KateChat: React.FC<{ initialContext?: KateContext; initialPrompt?: 
 
   const srcTitle = (id: string) => sources.find((s) => s.id === id)?.title ?? 'Source';
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const placeDefault = useMemo(() => ({ ...(placeFor?.placementRequest?.suggestion ?? {}), courseId: placeFor?.placementRequest?.suggestion?.courseId ?? ctx.courseId }), [placeFor]);
   return (
     <div className={`relative flex h-full min-h-0 flex-col ${dragging ? 'ring-2 ring-inset ring-indigo-400' : ''}`}
       onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); setDragging(true); } }}
@@ -192,7 +194,7 @@ export const KateChat: React.FC<{ initialContext?: KateContext; initialPrompt?: 
         <button type="submit" disabled={!draft.trim() || !!busy} className="rounded-xl bg-indigo-600 p-2.5 text-white disabled:opacity-40 hover:bg-indigo-700" aria-label="Send"><Send className="h-4 w-4" /></button>
       </form>
 
-      <PlacementPicker isOpen={!!placeFor} onClose={() => setPlaceFor(null)} title="Where should this go?" defaultTarget={{ ...(placeFor?.placementRequest?.suggestion ?? {}), courseId: placeFor?.placementRequest?.suggestion?.courseId ?? ctx.courseId }} onConfirm={placed} />
+      <PlacementPicker isOpen={!!placeFor} onClose={() => setPlaceFor(null)} title="Where should this go?" defaultTarget={placeDefault as any} onConfirm={placed} />
     </div>
   );
 };

@@ -57,10 +57,39 @@ export function rules(input: GeneratorInput) {
 - Respond with JSON only.`;
 }
 
+const WRITER_TIMEOUT_MS = 110_000;
+
+function unreadable() {
+  return Object.assign(new Error("Kate's writer returned an unreadable answer. Click Retry."), { status: 502, code: 'bad_model_output' });
+}
+
+/**
+ * Ask the writer model for JSON. One automatic second try covers the two failure
+ * modes we see in production: a stalled request and a truncated / non-JSON answer.
+ * Two tries at 110s each stay inside Vercel's 300s function limit with room for the checker.
+ */
 export async function askWriter<T = any>(deps: GeneratorDeps, system: string, user: string, maxTokens = 8000): Promise<T> {
-  const res = await deps.chat({ model: KATE_MODELS.writer, json: true, maxTokens, temperature: 0.3, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] });
-  try { return parseJsonLoose<T>(res.text); }
-  catch { throw Object.assign(new Error('Kate\'s writer returned an unreadable answer. Please try again.'), { status: 502, code: 'bad_model_output' }); }
+  let lastErr: any = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const nudge = attempt === 0 ? '' : '\n\nIMPORTANT: your previous answer was cut off or was not valid JSON. Answer again with ONE complete, compact JSON object only. Keep every field short so it fits.';
+    try {
+      const res = await deps.chat({ model: KATE_MODELS.writer, json: true, maxTokens: attempt === 0 ? maxTokens : Math.round(maxTokens * 1.5), temperature: 0.3, timeoutMs: WRITER_TIMEOUT_MS, messages: [{ role: 'system', content: system }, { role: 'user', content: user + nudge }] } as any);
+      try { return parseJsonLoose<T>(res.text); }
+      catch {
+        console.error('[kate.writer.unparseable]', JSON.stringify({ attempt, len: res.text?.length, finish: (res as any).finishReason, tail: res.text?.slice(-200) }));
+        lastErr = unreadable();
+      }
+    } catch (e: any) {
+      const retryable = e?.name === 'AiTimeoutError' || e?.retryable === true || /timed? ?out|rate limit/i.test(String(e?.message));
+      if (!retryable) throw e;
+      console.error('[kate.writer.retry]', attempt, e?.message);
+      lastErr = e;
+    }
+  }
+  if (lastErr?.name === 'AiTimeoutError' || /timed? ?out/i.test(String(lastErr?.message))) {
+    throw Object.assign(new Error('Kate took too long on this one. Click Retry.'), { status: 504, code: 'ai_timeout' });
+  }
+  throw lastErr ?? unreadable();
 }
 
 const rid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`;

@@ -59,7 +59,7 @@ export const SourceDetailPage: React.FC = () => {
       <PageHeader
         title={s.title}
         breadcrumbs={[{ label: 'Knowledge Vault', to: '/instructor/knowledge' }, { label: s.title }]}
-        actions={<div className="flex items-center gap-2">{(s.processing_state === 'ready' || s.processing_state === 'needs_review') && <button onClick={() => window.dispatchEvent(new CustomEvent('kate:open', { detail: { sourceIds: [s.id], checklist: true } }))} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">Ask Kate what to build</button>}<AuthorityBadge level={s.authority_level} /><SourceStateBadge state={s.processing_state} /></div>}
+        actions={<div className="flex items-center gap-2">{(s.processing_state === 'ready' || s.processing_state === 'needs_review') && <button onClick={() => window.dispatchEvent(new CustomEvent('kate:open', { detail: { sourceIds: [s.id], checklist: true } }))} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700">Ask Kate what to build</button>}{(s.processing_state === 'ready' || s.processing_state === 'needs_review') && <Link to={`/instructor/courses/new?source=${s.id}`} className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">Build a whole course</Link>}<AuthorityBadge level={s.authority_level} /><SourceStateBadge state={s.processing_state} /></div>}
       />
 
       <ProcessingPanel detail={detail} onReprocess={async () => { await knowledgeApi.reprocess(s.id); load(); }} onReviewPages={() => setTab('eyes')} />

@@ -105,6 +105,7 @@ export async function auditDraft(
     const res = await deps.chat({
       model: KATE_MODELS.checker,
       json: true,
+      timeoutMs: 45_000,
       messages: [
         {
           role: 'system',

@@ -94,8 +94,18 @@ export async function openRouterChat(req: ORRequest): Promise<ORResponse> {
       if (attempt < 2) { await new Promise((r) => setTimeout(r, 800 * (attempt + 1))); continue; }
       throw new AiProviderError(502, true, `Network error: ${e?.message ?? e}`);
     }
+    // OpenRouter sends headers immediately and streams keep-alive padding while the
+    // model works, so the timeout must also cover reading the body.
+    let data: any;
+    try {
+      const raw = await res.text();
+      data = raw.trim() ? JSON.parse(raw) : {};
+    } catch (e: any) {
+      clearTimeout(t);
+      if (e?.name === 'AbortError' || ctrl.signal.aborted) throw new AiTimeoutError();
+      data = {};
+    }
     clearTimeout(t);
-    const data: any = await res.json().catch(() => ({}));
     if (res.status === 429) {
       if (attempt < 2) { await new Promise((r) => setTimeout(r, 1500 * (attempt + 1))); continue; }
       throw new AiRateLimitError();

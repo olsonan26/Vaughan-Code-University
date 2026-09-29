@@ -13,6 +13,8 @@ import { useStudioPermissions } from './permissions';
 import { StudioDashboard } from './dashboard/StudioDashboard';
 import { CourseLayout } from './course/CourseLayout';
 import { ComingNext } from './common/ComingNext';
+import { MyCoursesPage, NewCoursePage } from '../builder/NewCoursePage';
+import { BuildPage } from '../builder/BuildPage';
 import { EmptyState } from '../../components/shared/EmptyState';
 
 interface NavItem { to: string; label: string; icon: React.ComponentType<{ className?: string }>; end?: boolean; permission?: Permission }
@@ -118,8 +120,9 @@ export const InstructorStudio: React.FC = () => {
             <Route index element={<StudioDashboard />} />
             <Route path="knowledge" element={<KnowledgeVaultPage />} />
             <Route path="knowledge/:sourceId" element={<SourceDetailPage />} />
-            <Route path="courses" element={<ComingNext title="My Courses" description="Courses you own or collaborate on." milestone="Course Factory" />} />
-            <Route path="courses/new" element={<ComingNext title="Create Course" description="Choose knowledge, define students and outcome, set preferences, build the curriculum." milestone="Course Factory" />} />
+            <Route path="courses" element={<MyCoursesPage />} />
+            <Route path="courses/new" element={<NewCoursePage />} />
+            <Route path="builds/:buildId" element={<BuildPage />} />
             <Route path="course/:courseId" element={<CourseLayout />}>
               <Route index element={<ComingNext title="Course overview" description="Status, readiness and recent activity." milestone="Course Factory" />} />
               <Route path="curriculum" element={<ComingNext title="Curriculum blueprint" description="Modules, lessons, objectives and prerequisite checks." milestone="Course Architect" />} />
