@@ -14,6 +14,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Course, CourseModule, Lesson, LessonType, SubscriptionTier } from '../../types';
+import { priceLabel } from '../../lib/plans';
 import { useApp } from '../../context/AppContext';
 
 interface CourseEditorModalProps {
@@ -241,8 +242,8 @@ export const CourseEditorModal: React.FC<CourseEditorModalProps> = ({
                     className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-indigo-600 shadow-sm cursor-pointer"
                   >
                     <option value="free">Free for All Members</option>
-                    <option value="pro">Pro Subscribers ($29/mo)</option>
-                    <option value="vip">VIP Mastermind ($79/mo)</option>
+                    <option value="pro">Pro Subscribers ({priceLabel('pro')})</option>
+                    <option value="vip">VIP Mastermind ({priceLabel('vip')})</option>
                   </select>
                 </div>
 

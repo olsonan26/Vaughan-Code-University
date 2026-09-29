@@ -618,7 +618,7 @@ export const INITIAL_COURSES: Course[] = [
     tagline: 'How Letters Become Numbers',
     category: 'Foundations',
     description: 'Learn the Vaughan Code language: the number key, letter conversion, compound trails, reduction, position awareness, and the foundations needed to calculate accurately.',
-    thumbnail: '/src/assets/images/vc101_language_code_1788336655344.jpg',
+    thumbnail: '/images/courses/vc101_language_code_1788336655344.jpg',
     author: {
       id: 'user-creator',
       name: 'Prof. Vaughan',
@@ -669,7 +669,7 @@ The goal is to calculate accurately, understand position, compare layers, and te
     tagline: 'Reading the Human Blueprint',
     category: 'Human Blueprint',
     description: 'Learn why a person is not one number. Separate First Name, Called Name, Whole Name, Heart’s Desire, Day of Birth, Total Birth Date, and Ultimate Goal before synthesizing the complete profile.',
-    thumbnail: '/src/assets/images/vc201_identity_code_1788336668852.jpg',
+    thumbnail: '/images/courses/vc201_identity_code_1788336668852.jpg',
     author: {
       id: 'user-instructor',
       name: 'Alexander Kotzev',
@@ -728,7 +728,7 @@ The goal is to calculate accurately, understand position, compare layers, and te
     tagline: 'Mapping Past, Present & Future',
     category: 'Timeline Analysis',
     description: 'Learn how the chart moves through time using Age, active Letters, Essence, Personal Year, Combiner, Calendar Year, monthly layers, Power Numbers in context, and historical validation.',
-    thumbnail: '/src/assets/images/vc301_timeline_code_1788336681392.jpg',
+    thumbnail: '/images/courses/vc301_timeline_code_1788336681392.jpg',
     author: {
       id: 'user-creator',
       name: 'Prof. Vaughan',

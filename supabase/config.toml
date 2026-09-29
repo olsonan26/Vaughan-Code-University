@@ -1,0 +1,5 @@
+project_id = "vaughan-code-university"
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/reset"]

@@ -8,12 +8,21 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
+const WELCOME_SEEN_KEY = 'vcu.welcomeSeen';
+
 export const WelcomeModal: React.FC = () => {
   const { setActiveTab } = useApp();
 
-  // Development/testing behavior: show on every refresh.
-  // Production can switch this to a persisted onboarding flag.
-  const [isOpen, setIsOpen] = useState(true);
+  // Shown once per browser to students; never inside the Instructor Studio.
+  const [isOpen, setIsOpenState] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (window.location.pathname.startsWith('/instructor')) return false;
+    try { return localStorage.getItem(WELCOME_SEEN_KEY) !== '1'; } catch { return true; }
+  });
+  const setIsOpen = (open: boolean) => {
+    if (!open) { try { localStorage.setItem(WELCOME_SEEN_KEY, '1'); } catch { /* private mode */ } }
+    setIsOpenState(open);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

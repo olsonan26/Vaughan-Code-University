@@ -4,11 +4,12 @@ import { useApp } from '../../context/AppContext';
 import { LEVEL_TIERS } from '../../data/initialData';
 
 export const LevelUpModal: React.FC = () => {
-  const { isLevelUpModalOpen, levelUpLevel, closeLevelUpModal, setActiveTab } = useApp();
+  const { levelUpModal, closeLevelUpModal, setActiveTab } = useApp();
+  const levelUpLevel = levelUpModal.newLevel?.level;
 
-  if (!isLevelUpModalOpen || !levelUpLevel) return null;
+  if (!levelUpModal.isOpen || !levelUpLevel) return null;
 
-  const currentTier = LEVEL_TIERS.find((t) => t.level === levelUpLevel) || LEVEL_TIERS[0];
+  const currentTier = LEVEL_TIERS.find((t) => t.level === levelUpLevel) || levelUpModal.newLevel || LEVEL_TIERS[0];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fadeIn">
@@ -56,7 +57,7 @@ export const LevelUpModal: React.FC = () => {
         <button
           onClick={() => {
             closeLevelUpModal();
-            setActiveTab('leaderboard');
+            setActiveTab('leaderboards');
           }}
           className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-transform hover:scale-102 cursor-pointer"
         >

@@ -11,7 +11,6 @@ import { ClassroomView } from './components/classroom/ClassroomView';
 import { LeaderboardView } from './components/gamification/LeaderboardView';
 import { CalendarView } from './components/calendar/CalendarView';
 import { MembersView } from './components/members/MembersView';
-import { CreatorDashboardView } from './components/creator/CreatorDashboardView';
 import { ProfileView } from './components/profile/ProfileView';
 import { AdminControlView } from './components/admin/AdminControlView';
 import { SubscriptionModal } from './components/subscription/SubscriptionModal';
@@ -23,6 +22,15 @@ import { CertificateModal } from './components/classroom/CertificateModal';
 import { CourseEditorModal } from './components/classroom/CourseEditorModal';
 import { WelcomeModal } from './components/common/WelcomeModal';
 import { ToastContainer } from './components/common/ToastContainer';
+import { AccessRestricted } from './components/common/AccessRestricted';
+import { usePermissions } from './lib/permissions';
+import { DemoModeBanner } from './features/auth/DemoModeBanner';
+import { KatePanel } from './features/kate/KatePanel';
+import { PlacementHost } from './features/placement/PlacementHost';
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
+import { useLocation } from 'react-router';
+
+const InstructorStudio = React.lazy(() => import('./features/instructor/InstructorStudio'));
 import { Crown, ShieldCheck, Zap } from 'lucide-react';
 
 // Reset the old seeded demo cache once so the corrected Vaughan Code curriculum,
@@ -44,25 +52,45 @@ const MainLayout: React.FC = () => {
     openSubscriptionModal,
     currentUser,
     subscriptionPlans,
+    isCourseEditorOpen,
+    closeCourseEditor,
+    editingCourse,
+    isCertificateModalOpen,
+    closeCertificateModal,
+    certificateCourse,
   } = useApp();
 
+  const perms = usePermissions();
+  const location = useLocation();
+  const isAuthPage = location.pathname.startsWith('/auth/reset');
   const proPlan = subscriptionPlans.find((plan) => plan.id === 'pro');
   const vipPlan = subscriptionPlans.find((plan) => plan.id === 'vip');
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col selection:bg-indigo-500 selection:text-white font-sans antialiased">
+      <DemoModeBanner />
       <Navbar />
 
       <main className="flex-1 pb-16">
-        {activeTab === 'community' && <CommunityView />}
+        {isAuthPage && <ResetPasswordPage />}
+        {!isAuthPage && activeTab === 'community' && <CommunityView />}
         {activeTab === 'classroom' && <ClassroomView />}
         {activeTab === 'leaderboards' && <LeaderboardView />}
         {activeTab === 'calendar' && <CalendarView />}
         {activeTab === 'members' && <MembersView />}
         {activeTab === 'profile' && <ProfileView />}
         {activeTab === 'admin' && <AdminControlView />}
-        {activeTab === 'creator' && <CreatorDashboardView />}
+        {activeTab === 'creator' &&
+          (perms.canAccessInstructorStudio ? (
+            <React.Suspense fallback={<div className="p-8 text-xs text-slate-500">Loading Studio...</div>}>
+              <InstructorStudio />
+            </React.Suspense>
+          ) : (
+            <AccessRestricted area="Instructor Studio" />
+          ))}
       </main>
+
+      {perms.canAccessInstructorStudio && <><KatePanel /><PlacementHost /></>}
 
       {currentUser?.subscriptionTier === 'free' && (
         <div className="sticky bottom-0 z-30 bg-white/95 border-t border-slate-200 backdrop-blur-md px-4 py-3 shadow-lg">
@@ -126,8 +154,23 @@ const MainLayout: React.FC = () => {
       <UserProfileModal />
       <LevelUpModal />
       <LevelPerksModal />
-      <CertificateModal />
-      <CourseEditorModal />
+      {/* Mounted once, app-wide, so they open from any tab (Studio, Profile, Classroom). */}
+      <CertificateModal
+        isOpen={isCertificateModalOpen}
+        onClose={closeCertificateModal}
+        course={certificateCourse}
+        user={currentUser}
+      />
+      {isCourseEditorOpen && (
+        // Keyed + conditionally mounted so the form always initialises from the course being
+        // edited. Previously it kept stale/blank state and could overwrite a course's modules.
+        <CourseEditorModal
+          key={editingCourse?.id ?? 'new-course'}
+          isOpen={isCourseEditorOpen}
+          onClose={closeCourseEditor}
+          initialCourse={editingCourse}
+        />
+      )}
       <WelcomeModal />
       <ToastContainer />
     </div>

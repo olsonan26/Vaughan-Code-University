@@ -18,6 +18,8 @@ import {
   Shield,
   X,
 } from 'lucide-react';
+import { usePermissions } from '../lib/permissions';
+import { useAuth } from '../features/auth/AuthProvider';
 import { useApp } from '../context/AppContext';
 import { LEVEL_TIERS } from '../data/initialData';
 import { User } from '../types';
@@ -63,8 +65,9 @@ export const Navbar: React.FC = () => {
     Math.max(0, Math.round(((currentXp - levelMinXp) / (levelMaxXp - levelMinXp)) * 100)),
   );
 
-  const isFacultyAdmin =
-    currentUser?.id === 'user-creator' || currentUser?.id === 'user-instructor';
+  const perms = usePermissions();
+  const { isDemoMode } = useAuth();
+  const isFacultyAdmin = perms.canAccessAdmin;
 
   const proPlan = subscriptionPlans.find((plan) => plan.id === 'pro');
 
@@ -176,6 +179,7 @@ export const Navbar: React.FC = () => {
               </button>
             ) : null}
 
+            {isDemoMode && (
             <div className="relative">
               <button
                 onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
@@ -240,6 +244,7 @@ export const Navbar: React.FC = () => {
                 </div>
               )}
             </div>
+            )}
 
             {currentUser ? (
               <div className="relative shrink-0">
@@ -442,7 +447,7 @@ export const Navbar: React.FC = () => {
               </button>
             )}
 
-            {currentUser?.role === 'creator' && (
+            {perms.canAccessInstructorStudio && (
               <button
                 onClick={() => setActiveTab('creator')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap border ${

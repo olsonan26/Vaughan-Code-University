@@ -22,6 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Lesson, Course } from '../../types';
+import { priceLabel } from '../../lib/plans';
 import { useApp } from '../../context/AppContext';
 
 interface LessonPlayerProps {
@@ -153,7 +154,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
           className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl text-sm shadow-xs transition-all cursor-pointer inline-flex items-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
-          <span>Upgrade to Pro to Unlock ($29/mo)</span>
+          <span>Upgrade to Pro to Unlock ({priceLabel('pro')})</span>
         </button>
       </div>
     );

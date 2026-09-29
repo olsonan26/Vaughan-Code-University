@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { useAuth } from '../features/auth/AuthProvider';
+import { deriveLegacyRole } from '../features/auth/logic';
+import { useLocation, useNavigate } from 'react-router';
+import { AppTab, canonicalPath, parseRoute, routes } from '../lib/routes';
 import confetti from 'canvas-confetti';
 import { 
   User, 
@@ -45,7 +49,7 @@ interface AppContextType {
   directMessages: DirectMessage[];
   toasts: Toast[];
   levelUpModal: { isOpen: boolean; newLevel: LevelInfo | null };
-  activeTab: 'community' | 'classroom' | 'calendar' | 'members' | 'leaderboards' | 'creator' | 'profile' | 'admin';
+  activeTab: AppTab;
   selectedCourseId: string | null;
   selectedLessonId: string | null;
   isAuthModalOpen: boolean;
@@ -62,7 +66,7 @@ interface AppContextType {
   systemAnnouncement: SystemAnnouncement | null;
 
   // Navigation & UI controls
-  setActiveTab: (tab: 'community' | 'classroom' | 'calendar' | 'members' | 'leaderboards' | 'creator' | 'profile' | 'admin') => void;
+  setActiveTab: (tab: AppTab) => void;
   setSelectedCourseId: (id: string | null) => void;
   setSelectedLessonId: (id: string | null) => void;
   openAuthModal: () => void;
@@ -77,6 +81,7 @@ interface AppContextType {
   closeCertificateModal: () => void;
   openLevelPerksModal: () => void;
   closeLevelPerksModal: () => void;
+  closeLevelUpModal: () => void;
   dismissToast: (id: string) => void;
   showToast: (toast: Omit<Toast, 'id'>) => void;
   dismissAnnouncement: () => void;
@@ -158,7 +163,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const parsed = JSON.parse(saved);
         if (!parsed.some((c: Course) => c.author?.name === 'Prof. Vaughan')) return INITIAL_COURSES;
         // Ensure the first training video matches the latest YouTube URL
-        const updated = parsed.map((c: Course) => {
+        const updated = parsed.map((cached: Course) => {
+          // Course images moved from /src/assets (dev-server only) to /public; repair cached paths.
+          const c: Course = cached.thumbnail?.startsWith('/src/assets/images/')
+            ? { ...cached, thumbnail: cached.thumbnail.replace('/src/assets/images/', '/images/courses/') }
+            : cached;
           if (c.id === 'course-1') {
             return {
               ...c,
@@ -207,9 +216,49 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'community' | 'classroom' | 'calendar' | 'members' | 'leaderboards' | 'creator' | 'profile' | 'admin'>('community');
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  // Navigation state is derived from the URL (see src/lib/routes.ts). The setters below keep
+  // the original context contract but navigate instead of mutating in-memory state.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const route = parseRoute(location.pathname);
+  const activeTab = route.tab;
+  const selectedCourseId = route.courseId;
+  const selectedLessonId = route.lessonId;
+
+  // Several handlers call two setters back-to-back (e.g. course then lesson). Track the
+  // latest intended location within the current tick so the second call builds on the first
+  // and replaces the intermediate history entry instead of pushing a duplicate.
+  const pendingNav = useRef<{ tab: AppTab; courseId: string | null } | null>(null);
+  const currentNav = () => pendingNav.current ?? { tab: activeTab, courseId: selectedCourseId };
+  const go = (path: string, next: { tab: AppTab; courseId: string | null }) => {
+    const chained = pendingNav.current !== null;
+    pendingNav.current = next;
+    if (!chained) queueMicrotask(() => { pendingNav.current = null; });
+    if (!chained && path === location.pathname) return;
+    navigate(path, { replace: chained });
+  };
+
+  const setActiveTab = (tab: AppTab) => go(routes.tab(tab), { tab, courseId: null });
+  const setSelectedCourseId = (id: string | null) => {
+    if (id) return go(routes.course(id), { tab: 'classroom', courseId: id });
+    if (currentNav().tab === 'classroom') go(routes.tab('classroom'), { tab: 'classroom', courseId: null });
+  };
+  const setSelectedLessonId = (id: string | null) => {
+    const { tab, courseId } = currentNav();
+    if (tab !== 'classroom' || !courseId) return;
+    go(id ? routes.lesson(courseId, id) : routes.course(courseId), { tab, courseId });
+  };
+
+  // Normalise legacy or unknown URLs (e.g. "/", "/creator", "/leaderboard") to canonical paths.
+  useEffect(() => {
+    // Auth landing pages (e.g. /auth/reset from a password-reset email) are not tabs.
+    if (location.pathname.startsWith('/auth/')) return;
+    const canonical = canonicalPath(route);
+    if (canonical !== location.pathname.replace(/\/+$/, '') ) {
+      navigate(canonical + location.search + location.hash, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
@@ -246,7 +295,60 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Derived current user and viewing user
-  const currentUser = users.find((u) => u.id === currentUserId) || null;
+  // --- Auth bridge -------------------------------------------------------------------------
+  // Supabase mode: identity comes ONLY from Supabase Auth + server roles. Local records keyed by
+  // the auth user id keep existing gamification/progress features working until they migrate.
+  // Demo mode (no backend configured): legacy local personas, clearly bannered.
+  const auth = useAuth();
+  const isSupabaseMode = auth.mode === 'supabase';
+  const authRolesKey = auth.roles.join(',');
+  useEffect(() => {
+    if (!isSupabaseMode || auth.status !== 'signed_in' || !auth.userId) return;
+    const id = auth.userId;
+    const email = auth.email ?? '';
+    const name = auth.profile?.displayName || email.split('@')[0] || 'Student';
+    const role = deriveLegacyRole(auth.roles);
+    setUsers((prev) => {
+      const existing = prev.find((u) => u.id === id);
+      const today = new Date().toISOString().split('T')[0];
+      const base: User = existing ?? {
+        id,
+        name,
+        email,
+        avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+        role,
+        subscriptionTier: 'free',
+        level: 1,
+        xp: 0,
+        streakDays: 1,
+        lastActiveDate: today,
+        bio: '',
+        joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        badges: [],
+        completedLessonIds: [],
+        passedTestIds: [],
+        activityHistory: [{ date: today, count: 1 }],
+      };
+      const merged: User = {
+        ...base,
+        name: auth.profile?.displayName || base.name,
+        email,
+        avatar: auth.profile?.avatarUrl || base.avatar,
+        bio: auth.profile?.bio ?? base.bio,
+        role,
+        subscriptionTier: auth.profile?.subscriptionTier ?? base.subscriptionTier,
+      };
+      return existing ? prev.map((u) => (u.id === id ? merged : u)) : [merged, ...prev];
+    });
+    setCurrentUserId(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupabaseMode, auth.status, auth.userId, auth.email, auth.profile, authRolesKey]);
+
+  const currentUser = isSupabaseMode
+    ? auth.status === 'signed_in' && auth.userId
+      ? users.find((u) => u.id === auth.userId) || null
+      : null
+    : users.find((u) => u.id === currentUserId) || null;
   const viewingUser = users.find((u) => u.id === viewingUserId) || currentUser || users[0] || null;
 
   // Persist states to local storage
@@ -467,6 +569,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const login = (email: string) => {
+    // Supabase mode signs in through useAuth() (AuthModal); this legacy path is demo-only.
+    if (isSupabaseMode) return false;
     const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (found) {
       setCurrentUserId(found.id);
@@ -487,6 +591,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const signup = (name: string, email: string) => {
+    if (isSupabaseMode) return;
     const newUser: User = {
       id: `user-${Date.now()}`,
       name,
@@ -517,6 +622,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const logout = () => {
+    if (isSupabaseMode) {
+      void auth.signOut();
+      return;
+    }
     setCurrentUserId('user-free');
     showToast({
       title: 'Logged Out',
@@ -526,6 +635,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const switchUser = (userId: string) => {
+    if (isSupabaseMode) {
+      console.warn('switchUser is disabled when real authentication is configured.');
+      return;
+    }
     const target = users.find((u) => u.id === userId);
     if (target) {
       setCurrentUserId(userId);

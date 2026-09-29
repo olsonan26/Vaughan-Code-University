@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
+import { monthlyPrice, priceLabel } from '../../lib/plans';
 import { useApp } from '../../context/AppContext';
 
 export const CreatorDashboardView: React.FC = () => {
@@ -31,8 +32,8 @@ export const CreatorDashboardView: React.FC = () => {
   const vipCount = users.filter((u) => u.subscriptionTier === 'vip').length;
   const freeCount = users.filter((u) => u.subscriptionTier === 'free').length;
 
-  // Calculate MRR
-  const mrr = (proCount * 29) + (vipCount * 79);
+  // Simulated MRR from local demo members x centralized plan prices. Not real billing data.
+  const mrr = proCount * monthlyPrice('pro') + vipCount * monthlyPrice('vip');
   const arr = mrr * 12;
 
   // Total lessons uploaded
@@ -71,7 +72,7 @@ export const CreatorDashboardView: React.FC = () => {
         {/* Metric 1: MRR */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-            <span>Monthly Recurring (MRR)</span>
+            <span>Simulated MRR (demo data)</span>
             <DollarSign className="w-4 h-4 text-emerald-600" />
           </div>
           <p className="text-2xl sm:text-3xl font-black text-slate-900">${mrr.toLocaleString()}</p>
@@ -84,12 +85,12 @@ export const CreatorDashboardView: React.FC = () => {
         {/* Metric 2: Active Subscribers */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-500 font-semibold">
-            <span>Paid Subscribers</span>
+            <span>Paid Tier Members (demo)</span>
             <Zap className="w-4 h-4 text-amber-500" />
           </div>
           <p className="text-2xl sm:text-3xl font-black text-slate-900">{proCount + vipCount}</p>
           <p className="text-[11px] text-slate-500">
-            {proCount} Pro ($29/mo) • {vipCount} VIP ($79/mo)
+            {proCount} Pro ({priceLabel('pro')}) • {vipCount} VIP ({priceLabel('vip')})
           </p>
         </div>
 

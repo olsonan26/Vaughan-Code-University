@@ -18,6 +18,8 @@ import {
   Award,
   CheckCircle2,
 } from 'lucide-react';
+import { usePermissions } from '../../lib/permissions';
+import { useAuth } from '../../features/auth/AuthProvider';
 import { useApp } from '../../context/AppContext';
 import { SubscriptionTier, UserRole, User } from '../../types';
 
@@ -55,7 +57,9 @@ export const AdminControlView: React.FC = () => {
   const [customXpAmount, setCustomXpAmount] = useState(100);
   const [xpReason, setXpReason] = useState('Faculty recognition');
 
-  const isAuthorized = currentUser?.id === 'user-creator' || currentUser?.id === 'user-instructor';
+  const { canAccessAdmin } = usePermissions();
+  const { isDemoMode } = useAuth();
+  const isAuthorized = canAccessAdmin;
 
   const filteredUsers = users.filter((user) => {
     const query = searchQuery.toLowerCase();
@@ -133,6 +137,7 @@ export const AdminControlView: React.FC = () => {
             </div>
           </div>
 
+          {isDemoMode && (
           <div className="flex items-center gap-2 bg-slate-900/80 p-2 rounded-xl border border-slate-700/80 shrink-0">
             <span className="text-[11px] text-slate-400 font-medium pl-1">Acting as:</span>
             <button
@@ -156,6 +161,7 @@ export const AdminControlView: React.FC = () => {
               Alexander Kotzev
             </button>
           </div>
+          )}
         </div>
       </div>
 
