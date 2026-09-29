@@ -69,15 +69,21 @@ kateRoutes.post('/checklist', async (c) => {
     return c.json(checklist);
   } catch (e) { return kateError(e); }
 });
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const generateBody = z.object({
-  action: z.string(),
+  action: z.enum(['quiz', 'flashcards', 'worksheet', 'lesson_plan', 'reading', 'lesson', 'module', 'course_map', 'rewrite', 'transcript_cleanup', 'enrichment']),
   threadId: z.string().uuid().optional(),
-  input: z.object({ courseId: z.string().uuid(), sourceIds: z.array(z.string().uuid()).min(1), instruction: z.string().max(8000).optional(), placement: z.any(), allowBeyondSource: z.boolean().default(false), approvedAdditions: z.array(z.string()).optional(), lock: z.any().optional() }),
+  input: z.object({ courseId: z.string().optional(), sourceIds: z.array(z.string().uuid()).min(1), instruction: z.string().max(8000).optional(), placement: z.any(), allowBeyondSource: z.boolean().default(false), approvedAdditions: z.array(z.string()).optional(), lock: z.any().optional() }),
 });
 kateRoutes.post('/generate', async (c) => {
   const { auth, deps, repo } = ctx(c);
   const b = await parseBody(c, generateBody);
-  await assertCourseTeam(deps.db, auth, b.input.courseId);
+  // The placement the instructor picked is the source of truth for which course this goes in.
+  const courseId = [b.input.placement?.courseId, b.input.courseId].find((v) => typeof v === 'string' && UUID_RE.test(v));
+  if (!courseId) throw new HttpError(400, 'validation_failed', 'Pick which course this goes in first.');
+  if (!b.input.placement?.moduleId || !b.input.placement?.lessonId) throw new HttpError(400, 'validation_failed', 'Pick the module and lesson this goes in first.');
+  b.input.courseId = courseId;
+  await assertCourseTeam(deps.db, auth, courseId);
   if (b.threadId) await ownThread(c, b.threadId);
   try {
     const draft = await katePorts.getGenerator(b.action as any).generate({ ...b.input, organizationId: auth.organizationId, userId: auth.userId, placement: { ...b.input.placement, courseId: b.input.courseId } } as any, deps as any);
